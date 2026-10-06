@@ -85,7 +85,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="sidebar-footer">
           <img src={mayaBird} alt="AgriAssist" className="footer-mini-logo" />
           <div className="footer-brand-meta">
-            <span className="footer-brand-name">AgriAssist</span>
+            <span className="footer-brand-name">MADA</span>
             <span className="footer-brand-version">v1.0.0</span>
           </div>
         </div>
