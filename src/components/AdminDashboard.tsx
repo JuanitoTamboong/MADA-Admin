@@ -12,12 +12,10 @@ import {
   Search,
   Bell,
   ChevronDown,
-  Cloud,
   ChevronRight,
   TrendingUp,
   PieChart,
   ShieldAlert,
-  ArrowUpRight
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
 import mayaBird from '../assets/images/maya-bird.png';
@@ -28,7 +26,7 @@ export const AdminDashboard: React.FC = () => {
       {/* 1. LEFT SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src={mayaBird} alt="MADA Logo" className="brand-logo" />
+          <img src={mayaBird} alt="AgriAssist logo" className="brand-logo" />
           <div className="brand-info">
             <h1 className="brand-title">MADA</h1>
             <p className="brand-tagline">Smarter Farms, Stronger Communities</p>
@@ -74,7 +72,7 @@ export const AdminDashboard: React.FC = () => {
           </a>
         </nav>
 
-        {/* MADA Promo Box */}
+        {/* AgriAssist promo box */}
         <div className="sidebar-promo-card">
           <div className="promo-bg" />
           <div className="promo-content">
@@ -85,9 +83,9 @@ export const AdminDashboard: React.FC = () => {
 
         {/* Sidebar Footer Branding */}
         <div className="sidebar-footer">
-          <img src={mayaBird} alt="MADA" className="footer-mini-logo" />
+          <img src={mayaBird} alt="AgriAssist" className="footer-mini-logo" />
           <div className="footer-brand-meta">
-            <span className="footer-brand-name">MADA System</span>
+            <span className="footer-brand-name">AgriAssist</span>
             <span className="footer-brand-version">v1.0.0</span>
           </div>
         </div>
@@ -201,21 +199,36 @@ export const AdminDashboard: React.FC = () => {
                 
                 {/* SVG Line Chart Representation */}
                 <div className="chart-wrapper">
-                  <svg viewBox="0 0 400 150" className="line-chart-svg">
+                  <svg
+                    viewBox="0 0 400 150"
+                    className="line-chart-svg"
+                    role="img"
+                    aria-label="Farm production trend from August 24 to August 30"
+                  >
+                    <g className="chart-grid">
+                      <path d="M 30 20 H 390 M 30 50 H 390 M 30 80 H 390 M 30 110 H 390" />
+                      <text x="2" y="113">0</text>
+                      <text x="2" y="83">50</text>
+                      <text x="2" y="53">100</text>
+                      <text x="2" y="23">150</text>
+                    </g>
                     <path
-                      d="M 10 110 L 60 95 L 110 115 L 160 85 L 210 95 L 260 70 L 310 50 L 370 20"
-                      fill="none"
-                      stroke="#047857"
-                      strokeWidth="2.5"
+                      d="M 30 110 L 80 95 L 130 105 L 180 82 L 230 90 L 280 68 L 330 48 L 390 20 L 390 120 L 30 120 Z"
+                      className="chart-area"
                     />
-                    <circle cx="10" cy="110" r="4" fill="#047857" />
-                    <circle cx="60" cy="95" r="4" fill="#047857" />
-                    <circle cx="110" cy="115" r="4" fill="#047857" />
-                    <circle cx="160" cy="85" r="4" fill="#047857" />
-                    <circle cx="210" cy="95" r="4" fill="#047857" />
-                    <circle cx="260" cy="70" r="4" fill="#047857" />
-                    <circle cx="310" cy="50" r="4" fill="#047857" />
-                    <circle cx="370" cy="20" r="4" fill="#047857" />
+                    <path
+                      d="M 30 110 L 80 95 L 130 105 L 180 82 L 230 90 L 280 68 L 330 48 L 390 20"
+                      fill="none"
+                      className="chart-line"
+                    />
+                    <circle cx="30" cy="110" r="3" />
+                    <circle cx="80" cy="95" r="3" />
+                    <circle cx="130" cy="105" r="3" />
+                    <circle cx="180" cy="82" r="3" />
+                    <circle cx="230" cy="90" r="3" />
+                    <circle cx="280" cy="68" r="3" />
+                    <circle cx="330" cy="48" r="3" />
+                    <circle cx="390" cy="20" r="3" />
                   </svg>
                   <div className="chart-labels">
                     <span>Aug 24</span>
@@ -394,6 +407,7 @@ export const AdminDashboard: React.FC = () => {
                     <small>Aug 25, 2025 • 10:24 AM</small>
                   </div>
                   <span className="status-pill pending">Pending</span>
+                  <ChevronRight size={15} className="report-arrow" />
                 </div>
 
                 <div className="report-item">
@@ -404,6 +418,7 @@ export const AdminDashboard: React.FC = () => {
                     <small>Aug 24, 2025 • 03:12 PM</small>
                   </div>
                   <span className="status-pill in-progress">In Progress</span>
+                  <ChevronRight size={15} className="report-arrow" />
                 </div>
 
                 <div className="report-item">
@@ -414,6 +429,7 @@ export const AdminDashboard: React.FC = () => {
                     <small>Aug 23, 2025 • 09:45 AM</small>
                   </div>
                   <span className="status-pill resolved">Resolved</span>
+                  <ChevronRight size={15} className="report-arrow" />
                 </div>
 
                 <div className="report-item">
@@ -424,6 +440,7 @@ export const AdminDashboard: React.FC = () => {
                     <small>Aug 22, 2025 • 04:20 PM</small>
                   </div>
                   <span className="status-pill resolved">Resolved</span>
+                  <ChevronRight size={15} className="report-arrow" />
                 </div>
 
                 <div className="report-item">
@@ -434,6 +451,7 @@ export const AdminDashboard: React.FC = () => {
                     <small>Aug 21, 2025 • 11:12 AM</small>
                   </div>
                   <span className="status-pill pending">Pending</span>
+                  <ChevronRight size={15} className="report-arrow" />
                 </div>
               </div>
             </div>
