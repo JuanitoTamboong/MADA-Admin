@@ -1,0 +1,355 @@
+/* src/css/AdminLogin.css */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body, html, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Page Background matching Dashboard soft theme */
+.login-viewport {
+  position: relative;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f1f5f9;
+  padding: 24px;
+}
+
+/* Background Soft Glows */
+.glow-accent {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.glow-top-left {
+  top: -150px;
+  left: -150px;
+  background: rgba(6, 78, 59, 0.12);
+}
+
+.glow-bottom-right {
+  bottom: -150px;
+  right: -150px;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+/* Main Card */
+.login-card-wrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  padding: 32px 36px;
+  box-shadow: 
+    0 20px 25px -5px rgba(15, 23, 42, 0.05),
+    0 8px 10px -6px rgba(15, 23, 42, 0.02);
+}
+
+/* Header Lockup: Logo + Text horizontally aligned */
+.card-top-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-text-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+
+.brand-title-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #064e3b; /* Dashboard Emerald */
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.brand-subtitle-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.08em;
+  margin-top: 3px;
+}
+
+.system-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  color: #047857;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Welcome Header */
+.card-welcome-section {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.card-welcome-section h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.card-welcome-section p {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Form Styles */
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.form-field {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-field label {
+  display: block;
+  text-align: left;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-box input {
+  width: 100%;
+  padding: 12px 14px 12px 42px;
+  font-size: 0.9rem;
+  color: #0f172a;
+  text-align: left;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  background-color: #f8fafc;
+  transition: all 0.2s ease-in-out;
+}
+
+.input-box input:focus {
+  border-color: #047857;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(4, 120, 87, 0.1);
+}
+
+.input-box input:focus + .field-icon,
+.input-box:focus-within .field-icon {
+  color: #047857;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: #334155;
+}
+
+/* Options Row Fix (Checkbox + Forgot Link) */
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  font-size: 0.875rem;
+}
+
+/* Clean Custom Checkbox */
+.checkbox-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkbox-custom {
+  width: 18px;
+  height: 18px;
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.checkbox-container:hover .checkbox-custom {
+  border-color: #047857;
+}
+
+.checkbox-container input:checked ~ .checkbox-custom {
+  background-color: #064e3b;
+  border-color: #064e3b;
+}
+
+.checkbox-container input:checked ~ .checkbox-custom::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-label {
+  color: #475569;
+  font-weight: 500;
+}
+
+.forgot-password-link {
+  color: #047857;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: #064e3b;
+  text-decoration: underline;
+}
+
+/* Submit CTA Button */
+.login-submit-btn {
+  width: 100%;
+  padding: 13px;
+  background-color: #064e3b;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 12px rgba(6, 78, 59, 0.15);
+}
+
+.login-submit-btn:hover {
+  background-color: #047857;
+  box-shadow: 0 6px 16px rgba(4, 120, 87, 0.25);
+  transform: translateY(-1px);
+}
+
+.login-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* Footer Section */
+.card-bottom-footer {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.mada-tagline {
+  font-size: 0.85rem;
+  font-style: italic;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 8px;
+}
+
+.footer-support {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.support-link {
+  color: #047857;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.support-link:hover {
+  text-decoration: underline;
+}
