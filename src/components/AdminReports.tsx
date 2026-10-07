@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import sampleFarmPhoto from '../assets/images/admin-farmers.jpg';
-import './AdminReports.css';
+import '../css/AdminReports.css';
 
 type ReportStatus =
   | 'New'

@@ -21,7 +21,7 @@ import {
   Wind,
   X,
 } from 'lucide-react';
-import './WeatherAlerts.css';
+import '../css/WeatherAlerts.css';
 
 type AlertStatus = 'Draft' | 'Active' | 'Expired' | 'Acknowledged';
 type AlertSeverity = 'High' | 'Moderate' | 'Low';

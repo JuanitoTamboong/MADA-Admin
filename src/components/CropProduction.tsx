@@ -10,7 +10,7 @@ import {
   Sprout,
   X,
 } from 'lucide-react';
-import './CropProduction.css';
+import '../css/CropProduction.css';
 
 type CropStatus = 'Growing' | 'Ready to Harvest' | 'Harvested';
 type QuantitySource = 'Farmer-reported' | 'Estimated' | 'Verified' | 'Not recorded';

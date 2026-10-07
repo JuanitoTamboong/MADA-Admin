@@ -13,7 +13,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import './AdminFarmers.css';
+import '../css/AdminFarmers.css';
 
 type FarmerStatus = 'Active' | 'Pending Verification' | 'Inactive';
 

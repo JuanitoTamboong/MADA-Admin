@@ -7,7 +7,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import './AdminAnalytics.css';
+import '../css/AdminAnalytics.css';
 
 const all = 'All';
 const dateRanges = [

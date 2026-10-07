@@ -15,7 +15,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import './AdminAnnouncements.css';
+import '../css/AdminAnnouncements.css';
 
 type AnnouncementStatus = 'Draft' | 'Published' | 'Scheduled' | 'Archived';
 type AnnouncementCategory =

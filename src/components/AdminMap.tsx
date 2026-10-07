@@ -8,7 +8,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
-import './AdminMap.css';
+import '../css/AdminMap.css';
 
 type FarmerStatus = 'Active' | 'Pending Verification' | 'Inactive';
 
