@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import '../css/AdminLogin.css';
 import mayaBird from '../assets/images/maya-bird.png';
+import PageLayout from '../shared/PageLayout';
 
 export const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ export const AdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="login-viewport">
+    <PageLayout className="login-viewport">
       {/* Background Glow Accents */}
       <div className="glow-accent glow-top-left" />
       <div className="glow-accent glow-bottom-right" />
@@ -117,7 +118,7 @@ export const AdminLogin: React.FC = () => {
           </div>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 };
 

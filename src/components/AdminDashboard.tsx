@@ -17,10 +17,11 @@ import {
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
 import SideNav from '../navigation/SideNav';
+import PageLayout from '../shared/PageLayout';
 
 export const AdminDashboard: React.FC = () => {
   return (
-    <div className="dashboard-container">
+    <PageLayout className="page-layout--dashboard">
       <SideNav />
 
       {/* 2. MAIN CONTENT AREA */}
@@ -479,7 +480,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </main>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
