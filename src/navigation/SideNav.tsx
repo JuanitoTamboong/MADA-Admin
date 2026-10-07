@@ -52,7 +52,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <FileText size={18} />
         <span>Reports</span>
       </a>
-      <a href="#crops" className="nav-item">
+      <a
+        aria-current={activePage === 'crops' ? 'page' : undefined}
+        className={`nav-item${activePage === 'crops' ? ' active' : ''}`}
+        href="#crops"
+      >
         <Sprout size={18} />
         <span>Crops &amp; Production</span>
       </a>
