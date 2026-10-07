@@ -14,13 +14,13 @@ import {
   User,
 } from 'lucide-react';
 import '../css/Settings.css';
-import { fetchSettings, upsertSettings } from '../supabase/settings';
+import { fetchSettings, upsertSettings } from '../supabase/settings.ts';
 import type {
   AppSettings,
   SettingsDateFormat,
   SettingsLanguage,
   SettingsTheme,
-} from '../supabase/settings';
+} from '../supabase/settings.ts';
 
 // ⚠️ Replace with the real signed-in user id once auth is wired up.
 // For now this is a placeholder that the settings table can accept as a UUID.
