@@ -16,6 +16,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
+import SettingsPage from './Settings';
 import AdminFarmers from './AdminFarmers';
 import AdminReports from './AdminReports';
 import CropProduction from './CropProduction';
@@ -87,6 +88,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminAnalytics />
         ) : activePage === 'announcements' ? (
           <AdminAnnouncements />
+        ) : activePage === 'settings' ? (
+          <SettingsPage />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">
@@ -146,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
               <button className="action-pill" onClick={() => { window.location.hash = 'announcements'; }}>
                 <Megaphone size={16} /> <span>Announcements</span>
               </button>
-              <button className="action-pill">
+              <button className="action-pill" onClick={() => { window.location.hash = 'settings'; }}>
                 <Settings size={16} /> <span>Settings</span>
               </button>
             </section>

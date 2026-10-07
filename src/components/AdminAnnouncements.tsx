@@ -13,32 +13,27 @@ import {
   Search,
   Send,
   Sparkles,
+  Trash2,
   Users,
   X,
 } from 'lucide-react';
 import '../css/AdminAnnouncements.css';
 
-type AnnouncementStatus = 'Draft' | 'Published' | 'Scheduled' | 'Archived';
-type AnnouncementCategory =
-  | 'Assistance'
-  | 'Training'
-  | 'Distribution Schedule'
-  | 'Weather Advisory'
-  | 'General';
+// Runtime values
+import {
+  createAnnouncement,
+  deleteAnnouncement,
+  fetchAnnouncements,
+  setAnnouncementStatus,
+  updateAnnouncement,
+} from '../supabase/announcement';
 
-interface Announcement {
-  id: string;
-  title: string;
-  category: AnnouncementCategory;
-  audience: string;
-  location: string;
-  publishDate: string;
-  expiryDate: string;
-  status: AnnouncementStatus;
-  summary: string;
-  instructions: string;
-  contact: string;
-}
+// Compile-time types only (required by verbatimModuleSyntax)
+import type {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementStatus,
+} from '../supabase/announcement';
 
 const allFilter = 'All';
 
@@ -50,7 +45,12 @@ const categories: AnnouncementCategory[] = [
   'General',
 ];
 
-const statuses: AnnouncementStatus[] = ['Draft', 'Published', 'Scheduled', 'Archived'];
+const statuses: AnnouncementStatus[] = [
+  'Draft',
+  'Published',
+  'Scheduled',
+  'Archived',
+];
 
 const createBlankAnnouncement = (): Omit<Announcement, 'id'> => ({
   title: '',
@@ -58,7 +58,9 @@ const createBlankAnnouncement = (): Omit<Announcement, 'id'> => ({
   audience: '',
   location: '',
   publishDate: new Date().toISOString().slice(0, 10),
-  expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10),
   status: 'Draft',
   summary: '',
   instructions: '',
@@ -77,6 +79,8 @@ const statusClass = (status: AnnouncementStatus) =>
 
 const AdminAnnouncements = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
@@ -92,14 +96,42 @@ const AdminAnnouncements = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
 
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // ------- Load from Supabase on mount -------
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    fetchAnnouncements()
+      .then((data) => {
+        if (!alive) return;
+        setAnnouncements(data);
+        if (data.length > 0) setSelectedId(data[0].id);
+      })
+      .catch((err) => {
+        console.error('Failed to load announcements:', err);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const filteredAnnouncements = useMemo(
     () =>
       announcements.filter((announcement) => {
-        const matchesSearch = `${announcement.title} ${announcement.location} ${announcement.audience}`
-          .toLowerCase()
-          .includes(search.toLowerCase());
+        const matchesSearch =
+          `${announcement.title} ${announcement.location} ${announcement.audience}`
+            .toLowerCase()
+            .includes(search.toLowerCase());
         const matchesCategory =
-          categoryFilter === allFilter || announcement.category === categoryFilter;
+          categoryFilter === allFilter ||
+          announcement.category === categoryFilter;
         const matchesStatus =
           statusFilter === allFilter || announcement.status === statusFilter;
         return matchesSearch && matchesCategory && matchesStatus;
@@ -138,16 +170,26 @@ const AdminAnnouncements = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [showPreview]);
 
-  // Lock body scroll while either modal is open
+  // Close delete confirm on Escape
   useEffect(() => {
-    if (showComposer || showPreview) {
+    if (!showDeleteConfirm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDeleteConfirm();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showDeleteConfirm]);
+
+  // Lock body scroll while any modal is open
+  useEffect(() => {
+    if (showComposer || showPreview || showDeleteConfirm) {
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       return () => {
         document.body.style.overflow = prev;
       };
     }
-  }, [showComposer, showPreview]);
+  }, [showComposer, showPreview, showDeleteConfirm]);
 
   const selectedAnnouncement =
     filteredAnnouncements.find((announcement) => announcement.id === selectedId) ??
@@ -155,6 +197,9 @@ const AdminAnnouncements = () => {
 
   const previewAnnouncement =
     announcements.find((a) => a.id === previewId) ?? null;
+
+  const deleteAnnouncement_ =
+    announcements.find((a) => a.id === deleteId) ?? null;
 
   const openComposerForCreate = () => {
     setEditingId(null);
@@ -195,7 +240,33 @@ const AdminAnnouncements = () => {
     setPreviewId(null);
   };
 
-  const handleAnnouncementAction = (
+  const openDeleteConfirm = (id: string) => {
+    setDeleteId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const closeDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+    setDeleteId(null);
+  };
+
+  const handleDeleteAnnouncement = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await deleteAnnouncement(deleteId);
+      setAnnouncements((current) =>
+        current.filter((a) => a.id !== deleteId),
+      );
+      closeDeleteConfirm();
+    } catch (err) {
+      console.error('Failed to delete announcement:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleAnnouncementAction = async (
     id: string,
     action: 'preview' | 'publish' | 'archive' | 'edit',
   ) => {
@@ -210,17 +281,24 @@ const AdminAnnouncements = () => {
       return;
     }
 
-    setAnnouncements((current) =>
-      current.map((announcement) => {
-        if (announcement.id !== id) return announcement;
-        if (action === 'publish') return { ...announcement, status: 'Published' };
-        if (action === 'archive') return { ...announcement, status: 'Archived' };
-        return announcement;
-      }),
-    );
+    const newStatus: AnnouncementStatus =
+      action === 'publish' ? 'Published' : 'Archived';
+
+    try {
+      await setAnnouncementStatus(id, newStatus);
+      setAnnouncements((current) =>
+        current.map((announcement) =>
+          announcement.id === id
+            ? { ...announcement, status: newStatus }
+            : announcement,
+        ),
+      );
+    } catch (err) {
+      console.error(`Failed to ${action} announcement:`, err);
+    }
   };
 
-  const handleSaveAnnouncement = () => {
+  const handleSaveAnnouncement = async () => {
     if (
       !draftAnnouncement.title.trim() ||
       !draftAnnouncement.audience.trim() ||
@@ -229,11 +307,12 @@ const AdminAnnouncements = () => {
       return;
     }
 
-    const sanitized = {
+    const sanitized: Omit<Announcement, 'id'> = {
       title: draftAnnouncement.title.trim(),
       category: draftAnnouncement.category,
       audience: draftAnnouncement.audience.trim(),
-      location: draftAnnouncement.location.trim() || 'Municipal agriculture office',
+      location:
+        draftAnnouncement.location.trim() || 'Municipal agriculture office',
       publishDate: draftAnnouncement.publishDate,
       expiryDate: draftAnnouncement.expiryDate,
       status: draftAnnouncement.status,
@@ -245,23 +324,25 @@ const AdminAnnouncements = () => {
         draftAnnouncement.contact.trim() || 'Municipal agriculture office',
     };
 
-    if (editingId) {
-      setAnnouncements((current) =>
-        current.map((item) =>
-          item.id === editingId ? { ...item, ...sanitized } : item,
-        ),
-      );
-      setSelectedId(editingId);
-    } else {
-      const nextAnnouncement: Announcement = {
-        id: `A-${Date.now()}`,
-        ...sanitized,
-      };
-      setAnnouncements((current) => [nextAnnouncement, ...current]);
-      setSelectedId(nextAnnouncement.id);
+    setSaving(true);
+    try {
+      if (editingId) {
+        const updated = await updateAnnouncement(editingId, sanitized);
+        setAnnouncements((current) =>
+          current.map((item) => (item.id === editingId ? updated : item)),
+        );
+        setSelectedId(updated.id);
+      } else {
+        const created = await createAnnouncement(sanitized);
+        setAnnouncements((current) => [created, ...current]);
+        setSelectedId(created.id);
+      }
+      closeComposer();
+    } catch (err) {
+      console.error('Failed to save announcement:', err);
+    } finally {
+      setSaving(false);
     }
-
-    closeComposer();
   };
 
   const totalPublished = announcements.filter(
@@ -295,30 +376,41 @@ const AdminAnnouncements = () => {
         </button>
       </header>
 
-      <section aria-label="Announcement summary" className="announcement-summary-grid">
+      <section
+        aria-label="Announcement summary"
+        className="announcement-summary-grid"
+      >
         <article className="summary-card summary-card--green">
-          <span className="summary-icon"><Megaphone size={18} /></span>
+          <span className="summary-icon">
+            <Megaphone size={18} />
+          </span>
           <div>
             <span>Total</span>
             <strong>{announcements.length}</strong>
           </div>
         </article>
         <article className="summary-card summary-card--blue">
-          <span className="summary-icon"><CheckCircle2 size={18} /></span>
+          <span className="summary-icon">
+            <CheckCircle2 size={18} />
+          </span>
           <div>
             <span>Published</span>
             <strong>{totalPublished}</strong>
           </div>
         </article>
         <article className="summary-card summary-card--amber">
-          <span className="summary-icon"><CalendarDays size={18} /></span>
+          <span className="summary-icon">
+            <CalendarDays size={18} />
+          </span>
           <div>
             <span>Scheduled</span>
             <strong>{totalScheduled}</strong>
           </div>
         </article>
         <article className="summary-card summary-card--purple">
-          <span className="summary-icon"><Sparkles size={18} /></span>
+          <span className="summary-icon">
+            <Sparkles size={18} />
+          </span>
           <div>
             <span>Drafts</span>
             <strong>{totalDrafts}</strong>
@@ -326,7 +418,10 @@ const AdminAnnouncements = () => {
         </article>
       </section>
 
-      <section aria-label="Announcement filters" className="announcement-toolbar">
+      <section
+        aria-label="Announcement filters"
+        className="announcement-toolbar"
+      >
         <label className="announcement-search">
           <Search size={14} />
           <input
@@ -338,26 +433,34 @@ const AdminAnnouncements = () => {
           />
         </label>
         <label>
-          <span><Filter size={14} /> Category</span>
+          <span>
+            <Filter size={14} /> Category
+          </span>
           <select
             onChange={(event) => setCategoryFilter(event.target.value)}
             value={categoryFilter}
           >
             <option value={allFilter}>All categories</option>
             {categories.map((category) => (
-              <option key={category} value={category}>{category}</option>
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
           </select>
         </label>
         <label>
-          <span><CalendarDays size={14} /> Status</span>
+          <span>
+            <CalendarDays size={14} /> Status
+          </span>
           <select
             onChange={(event) => setStatusFilter(event.target.value)}
             value={statusFilter}
           >
             <option value={allFilter}>All statuses</option>
             {statuses.map((status) => (
-              <option key={status} value={status}>{status}</option>
+              <option key={status} value={status}>
+                {status}
+              </option>
             ))}
           </select>
         </label>
@@ -365,13 +468,19 @@ const AdminAnnouncements = () => {
 
       <div className="announcement-layout">
         <section aria-label="Announcement list" className="announcement-list">
-          {filteredAnnouncements.length ? (
+          {loading ? (
+            <div className="announcement-empty-state">
+              Loading announcements…
+            </div>
+          ) : filteredAnnouncements.length ? (
             filteredAnnouncements.map((announcement) => (
               <article
                 key={announcement.id}
                 aria-pressed={selectedAnnouncement?.id === announcement.id}
                 className={`announcement-item${
-                  selectedAnnouncement?.id === announcement.id ? ' is-selected' : ''
+                  selectedAnnouncement?.id === announcement.id
+                    ? ' is-selected'
+                    : ''
                 }`}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -384,7 +493,9 @@ const AdminAnnouncements = () => {
                 tabIndex={0}
               >
                 <div className="announcement-item-topline">
-                  <span className="announcement-chip">{announcement.category}</span>
+                  <span className="announcement-chip">
+                    {announcement.category}
+                  </span>
                   <span className={statusClass(announcement.status)}>
                     {announcement.status}
                   </span>
@@ -392,8 +503,12 @@ const AdminAnnouncements = () => {
                 <h2>{announcement.title}</h2>
                 <p>{announcement.summary}</p>
                 <div className="announcement-meta">
-                  <span><MapPin size={12} /> {announcement.location}</span>
-                  <span><Users size={12} /> {announcement.audience}</span>
+                  <span>
+                    <MapPin size={12} /> {announcement.location}
+                  </span>
+                  <span>
+                    <Users size={12} /> {announcement.audience}
+                  </span>
                 </div>
                 <time dateTime={announcement.publishDate}>
                   Published {formatDate(announcement.publishDate)}
@@ -484,13 +599,20 @@ const AdminAnnouncements = () => {
                 <Pencil size={14} /> Edit
               </button>
               <button
-                className="action danger"
+                className="action secondary"
                 onClick={() =>
                   handleAnnouncementAction(selectedAnnouncement.id, 'archive')
                 }
                 type="button"
               >
                 <Archive size={14} /> Archive
+              </button>
+              <button
+                className="action danger"
+                onClick={() => openDeleteConfirm(selectedAnnouncement.id)}
+                type="button"
+              >
+                <Trash2 size={14} /> Delete
               </button>
             </div>
           </aside>
@@ -510,7 +632,9 @@ const AdminAnnouncements = () => {
         >
           <section className="announcement-modal">
             <div className="announcement-composer-header">
-              <h2>{editingId ? 'Edit announcement' : 'Create announcement'}</h2>
+              <h2>
+                {editingId ? 'Edit announcement' : 'Create announcement'}
+              </h2>
               <button
                 aria-label="Close announcement form"
                 className="announcement-close-button"
@@ -548,7 +672,9 @@ const AdminAnnouncements = () => {
                   value={draftAnnouncement.category}
                 >
                   {categories.map((category) => (
-                    <option key={category} value={category}>{category}</option>
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -618,7 +744,9 @@ const AdminAnnouncements = () => {
                   value={draftAnnouncement.status}
                 >
                   {statuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -671,6 +799,7 @@ const AdminAnnouncements = () => {
                 className="action secondary"
                 onClick={closeComposer}
                 type="button"
+                disabled={saving}
               >
                 Cancel
               </button>
@@ -678,16 +807,21 @@ const AdminAnnouncements = () => {
                 className="action primary"
                 onClick={handleSaveAnnouncement}
                 type="button"
+                disabled={saving}
               >
                 <Save size={14} />
-                {editingId ? 'Update announcement' : 'Save announcement'}
+                {saving
+                  ? 'Saving…'
+                  : editingId
+                  ? 'Update announcement'
+                  : 'Save announcement'}
               </button>
             </div>
           </section>
         </div>
       ) : null}
 
-      {/* ---------------- PREVIEW MODAL (public-facing look) ---------------- */}
+      {/* ---------------- PREVIEW MODAL ---------------- */}
       {showPreview && previewAnnouncement ? (
         <div
           className="announcement-modal-overlay"
@@ -712,7 +846,9 @@ const AdminAnnouncements = () => {
             </div>
 
             <article className="preview-body">
-              <p className="preview-eyebrow">MUNICIPAL AGRICULTURE OFFICE</p>
+              <p className="preview-eyebrow">
+                MUNICIPAL AGRICULTURE OFFICE
+              </p>
 
               <span className="announcement-chip">
                 {previewAnnouncement.category}
@@ -726,8 +862,12 @@ const AdminAnnouncements = () => {
                   {formatDate(previewAnnouncement.publishDate)} –{' '}
                   {formatDate(previewAnnouncement.expiryDate)}
                 </li>
-                <li><MapPin size={14} /> {previewAnnouncement.location}</li>
-                <li><Users size={14} /> {previewAnnouncement.audience}</li>
+                <li>
+                  <MapPin size={14} /> {previewAnnouncement.location}
+                </li>
+                <li>
+                  <Users size={14} /> {previewAnnouncement.audience}
+                </li>
               </ul>
 
               <section className="preview-block">
@@ -745,6 +885,59 @@ const AdminAnnouncements = () => {
                 <p>{previewAnnouncement.contact}</p>
               </section>
             </article>
+          </section>
+        </div>
+      ) : null}
+
+      {/* ---------------- DELETE CONFIRM MODAL ---------------- */}
+      {showDeleteConfirm && deleteAnnouncement_ ? (
+        <div
+          className="announcement-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm delete"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeDeleteConfirm();
+          }}
+        >
+          <section className="announcement-modal announcement-delete-confirm">
+            <div className="announcement-composer-header">
+              <h2>Delete announcement</h2>
+              <button
+                aria-label="Close delete dialog"
+                className="announcement-close-button"
+                onClick={closeDeleteConfirm}
+                type="button"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="delete-confirm-text">
+              Are you sure you want to permanently delete{' '}
+              <strong>“{deleteAnnouncement_.title}”</strong>? This action
+              cannot be undone.
+            </p>
+
+            <div className="announcement-composer-actions">
+              <button
+                className="action secondary"
+                onClick={closeDeleteConfirm}
+                type="button"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="action danger"
+                onClick={handleDeleteAnnouncement}
+                type="button"
+                disabled={deleting}
+              >
+                <Trash2 size={14} />
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

@@ -110,7 +110,7 @@
 .announcement-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;              /* vertical alignment fix */
+  align-items: center;
   gap: 10px;
   padding: 12px;
   border: 1px solid #e7eeea;
@@ -124,7 +124,7 @@
   flex: 1 1 240px;
   align-items: center;
   gap: 8px;
-  height: 36px;                     /* consistent height */
+  height: 36px;
   padding: 0 10px;
   border: 1px solid #e1e8e2;
   border-radius: 9px;
@@ -351,12 +351,17 @@
   font-size: 0.64rem;
   font-weight: 600;
 }
+.action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
 .action.primary   { background: #28764b; color: #fff; }
-.action.primary:hover { background: #195f3a; }
+.action.primary:hover:not(:disabled) { background: #195f3a; }
 .action.secondary { border-color: #dfe9df; background: #f7faf7; color: #3a4c3d; }
-.action.secondary:hover { border-color: #c9dccf; background: #eef5f0; }
+.action.secondary:hover:not(:disabled) { border-color: #c9dccf; background: #eef5f0; }
 .action.danger    { border-color: #efd7d8; background: #fff4f4; color: #9a4b4d; }
-.action.danger:hover { border-color: #e5bfc1; background: #ffebeb; }
+.action.danger:hover:not(:disabled) { border-color: #e5bfc1; background: #ffebeb; }
 
 /* ---------- MODAL ---------- */
 .announcement-modal-overlay {
@@ -548,6 +553,23 @@
   border: 1px solid #edf2ee;
   border-radius: 10px;
   background: #f8faf8;
+}
+
+/* ---------- DELETE CONFIRM MODAL ---------- */
+.announcement-delete-confirm {
+  width: min(460px, 100%);
+}
+
+.delete-confirm-text {
+  margin: 0;
+  color: #384b3e;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.delete-confirm-text strong {
+  color: #2d4136;
+  font-weight: 700;
 }
 
 /* ---------- RESPONSIVE ---------- */

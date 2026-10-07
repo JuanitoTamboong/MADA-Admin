@@ -92,7 +92,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Megaphone size={18} />
         <span>Announcements</span>
       </a>
-      <a href="#settings" className="nav-item">
+      <a
+        aria-current={activePage === 'settings' ? 'page' : undefined}
+        className={`nav-item${activePage === 'settings' ? ' active' : ''}`}
+        href="#settings"
+      >
         <Settings size={18} />
         <span>Settings</span>
       </a>

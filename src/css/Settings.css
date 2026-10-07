@@ -1,0 +1,253 @@
+.settings-page {
+  display: grid;
+  gap: 18px;
+  padding: 30px;
+  color: #26352a;
+}
+
+.settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.settings-eyebrow {
+  margin: 0 0 7px;
+  color: #61866a;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+}
+
+.settings-heading h1 {
+  margin: 0;
+  color: #263b2c;
+  font-size: clamp(26px, 3vw, 34px);
+  letter-spacing: -0.035em;
+}
+
+.settings-heading > div > p:last-child {
+  margin: 7px 0 0;
+  color: #758078;
+  font-size: 14px;
+}
+
+.settings-heading-icon,
+.settings-card-icon,
+.settings-option-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #4e815c;
+}
+
+.settings-heading-icon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #dce8dc;
+  border-radius: 15px;
+  background: #f0f6ef;
+}
+
+.settings-form {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-card {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid #e5ebe6;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.settings-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.settings-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #edf5ee;
+}
+
+.settings-card-heading h2 {
+  margin: 0;
+  color: #2d3c31;
+  font-size: 16px;
+}
+
+.settings-card-heading p {
+  margin: 4px 0 0;
+  color: #758078;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-field {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  color: #59665d;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-field--wide {
+  grid-column: 1 / -1;
+}
+
+.settings-field input,
+.settings-field select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid #dfe7e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #344238;
+  font: inherit;
+  font-size: 13px;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+  border-color: #4e9362;
+  outline: 3px solid rgb(78 147 98 / 14%);
+}
+
+.settings-language-field {
+  max-width: 360px;
+}
+
+.settings-options {
+  display: grid;
+}
+
+.settings-option {
+  display: flex;
+  min-height: 63px;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid #eef1ee;
+  cursor: pointer;
+}
+
+.settings-option:first-child {
+  border-top: 0;
+}
+
+.settings-option-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #f2f6f2;
+}
+
+.settings-option-copy {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+}
+
+.settings-option-copy strong {
+  color: #37443a;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.settings-option-copy small {
+  color: #7a857d;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.settings-option input {
+  width: 17px;
+  height: 17px;
+  margin: 0 3px 0 0;
+  accent-color: #167342;
+  cursor: pointer;
+}
+
+.settings-form-footer {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.settings-message {
+  margin: 0;
+  color: #39724a;
+  font-size: 12px;
+}
+
+.settings-message--error {
+  color: #b42318;
+}
+
+.settings-save-button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 8px;
+  background: #167342;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.settings-save-button:hover {
+  background: #105c34;
+}
+
+.settings-storage-note {
+  margin: -8px 0 0;
+  color: #829087;
+  font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .settings-page {
+    gap: 14px;
+    padding: 20px 16px;
+  }
+
+  .settings-card {
+    padding: 16px;
+  }
+
+  .settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-field--wide {
+    grid-column: auto;
+  }
+
+  .settings-form-footer {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+  }
+}
