@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Users,
   FileText,
@@ -16,13 +16,27 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
+import AdminFarmers from './AdminFarmers';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
 export const AdminDashboard: React.FC = () => {
+  const [activePage, setActivePage] = useState(
+    () => window.location.hash.slice(1) || 'dashboard',
+  );
+
+  useEffect(() => {
+    const updateActivePage = () => {
+      setActivePage(window.location.hash.slice(1) || 'dashboard');
+    };
+
+    window.addEventListener('hashchange', updateActivePage);
+    return () => window.removeEventListener('hashchange', updateActivePage);
+  }, []);
+
   return (
     <PageLayout className="page-layout--dashboard">
-      <SideNav />
+      <SideNav activePage={activePage} />
 
       {/* 2. MAIN CONTENT AREA */}
       <div className="main-wrapper">
@@ -53,7 +67,10 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </header>
 
-        {/* DASHBOARD BODY GRID */}
+        {activePage === 'farmers' ? (
+          <AdminFarmers />
+        ) : (
+        /* DASHBOARD BODY GRID */
         <main className="dashboard-content">
           <div className="left-grid-column">
             
@@ -479,6 +496,7 @@ export const AdminDashboard: React.FC = () => {
 
           </div>
         </main>
+        )}
       </div>
     </PageLayout>
   );

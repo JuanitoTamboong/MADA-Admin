@@ -4,16 +4,20 @@ import {
   CloudSun,
   FileText,
   LayoutDashboard,
+  Map,
   Megaphone,
   Settings,
   Sprout,
-  UserCheck,
   Users,
 } from 'lucide-react';
 import mayaBird from '../assets/images/maya-bird.png';
 import './SideNav.css';
 
-const SideNav: React.FC = () => (
+interface SideNavProps {
+  activePage: string;
+}
+
+const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
   <aside className="sidebar">
     <div className="sidebar-brand">
       <img src={mayaBird} alt="AgriAssist logo" className="brand-logo" />
@@ -24,11 +28,19 @@ const SideNav: React.FC = () => (
     </div>
 
     <nav className="sidebar-nav">
-      <a href="#dashboard" className="nav-item active">
+      <a
+        aria-current={activePage === 'dashboard' ? 'page' : undefined}
+        className={`nav-item${activePage === 'dashboard' ? ' active' : ''}`}
+        href="#dashboard"
+      >
         <LayoutDashboard size={18} />
         <span>Dashboard</span>
       </a>
-      <a href="#farmers" className="nav-item">
+      <a
+        aria-current={activePage === 'farmers' ? 'page' : undefined}
+        className={`nav-item${activePage === 'farmers' ? ' active' : ''}`}
+        href="#farmers"
+      >
         <Users size={18} />
         <span>Farmers</span>
       </a>
@@ -44,9 +56,9 @@ const SideNav: React.FC = () => (
         <CloudSun size={18} />
         <span>Weather &amp; Alerts</span>
       </a>
-      <a href="#users" className="nav-item">
-        <UserCheck size={18} />
-        <span>User Management</span>
+      <a href="#map" className="nav-item">
+        <Map size={18} />
+        <span>Map</span>
       </a>
       <a href="#analytics" className="nav-item">
         <BarChart3 size={18} />
