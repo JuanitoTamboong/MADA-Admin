@@ -3,8 +3,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import '../css/AdminLogin.css';
 import mayaBird from '../assets/images/maya-bird.png';
 import PageLayout from '../shared/PageLayout';
-// Import the Supabase client (adjust path if needed based on your folder structure)
-import { supabase } from '../supabase/supabase-client'; 
+import { supabase } from '../supabase/supabase-client.ts';
 
 // Add the onLogin prop interface
 interface AdminLoginProps {
