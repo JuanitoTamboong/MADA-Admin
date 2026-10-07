@@ -4,8 +4,7 @@ import AdminLogin from './components/AdminLogin';
 import './App.css';
 
 function App() {
-  // Change default to false so it starts on the login page
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
 
   return (
     <div className="App">

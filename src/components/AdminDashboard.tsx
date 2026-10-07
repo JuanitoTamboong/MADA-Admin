@@ -22,6 +22,7 @@ import CropProduction from './CropProduction';
 import WeatherAlerts from './WeatherAlerts';
 import AdminMap from './AdminMap';
 import AdminAnalytics from './AdminAnalytics';
+import AdminAnnouncements from './AdminAnnouncements';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -84,6 +85,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminMap />
         ) : activePage === 'analytics' ? (
           <AdminAnalytics />
+        ) : activePage === 'announcements' ? (
+          <AdminAnnouncements />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">
@@ -140,7 +143,7 @@ export const AdminDashboard: React.FC = () => {
               <button className="action-pill" onClick={() => { window.location.hash = 'analytics'; }}>
                 <BarChart3 size={16} /> <span>Analytics</span>
               </button>
-              <button className="action-pill">
+              <button className="action-pill" onClick={() => { window.location.hash = 'announcements'; }}>
                 <Megaphone size={16} /> <span>Announcements</span>
               </button>
               <button className="action-pill">

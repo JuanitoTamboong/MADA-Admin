@@ -84,7 +84,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <BarChart3 size={18} />
         <span>Analytics</span>
       </a>
-      <a href="#announcements" className="nav-item">
+      <a
+        aria-current={activePage === 'announcements' ? 'page' : undefined}
+        className={`nav-item${activePage === 'announcements' ? ' active' : ''}`}
+        href="#announcements"
+      >
         <Megaphone size={18} />
         <span>Announcements</span>
       </a>
