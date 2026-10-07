@@ -3,9 +3,11 @@ import {
   AlertTriangle,
   Bell,
   Check,
+  Cloud,
   ChevronDown,
   ClipboardList,
   Clock3,
+  CloudLightning,
   CloudRain,
   CloudSun,
   Droplets,
@@ -14,6 +16,7 @@ import {
   Search,
   Send,
   ShieldAlert,
+  Sun,
   Thermometer,
   Wind,
   X,
@@ -184,6 +187,18 @@ function weatherDescription(code: number) {
   if (code === 85 || code === 86) return 'Snow showers';
   if (code >= 95) return 'Thunderstorm';
   return 'Conditions unavailable';
+}
+
+function WeatherConditionIcon({ code, size = 20 }: { code: number; size?: number }) {
+  if (code >= 95) return <CloudLightning aria-hidden="true" size={size} />;
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+    return <CloudRain aria-hidden="true" size={size} />;
+  }
+  if (code === 2 || code === 3 || code === 45 || code === 48) {
+    return <Cloud aria-hidden="true" size={size} />;
+  }
+  if (code === 0 || code === 1) return <Sun aria-hidden="true" size={size} />;
+  return <CloudSun aria-hidden="true" size={size} />;
 }
 
 function locationLabel(location: GeocodingLocation) {
@@ -372,13 +387,14 @@ function WeatherLookup() {
       {locations.length > 0 && (
         <div aria-label="Matching locations" className="weather-location-results">
           <p>Select the correct municipality from the matching places:</p>
-          {locations.map((location) => (
+          {locations.map((location, index) => (
             <button
               aria-pressed={selectedLocation?.id === location.id}
               className={`weather-location-result${selectedLocation?.id === location.id ? ' weather-location-result--selected' : ''}`}
               disabled={loading !== null}
               key={location.id}
               onClick={() => loadForecast(location)}
+              style={{ animationDelay: `${index * 45}ms` }}
               type="button"
             >
               <MapPin size={15} />
@@ -389,10 +405,15 @@ function WeatherLookup() {
         </div>
       )}
 
-      {loading === 'forecast' && <p className="weather-loading">Loading forecast for the selected municipality…</p>}
+      {loading === 'forecast' && (
+        <p className="weather-loading" role="status">
+          <span aria-hidden="true" className="weather-loading-spinner" />
+          Loading forecast for the selected municipality…
+        </p>
+      )}
 
       {forecast && (
-        <div className="weather-forecast">
+        <div aria-live="polite" className="weather-forecast">
           <header className="weather-forecast-header">
             <div>
               <span className="weather-forecast-location"><MapPin size={15} /> {locationLabel(forecast.location)}</span>
@@ -403,8 +424,8 @@ function WeatherLookup() {
 
           <div className="weather-current-conditions">
             <div className="weather-current-main">
-              <CloudSun size={30} />
-              <div><strong>{forecast.current.temperature.toFixed(1)}°C</strong><span>{weatherDescription(forecast.current.weatherCode)}</span></div>
+              <WeatherConditionIcon code={forecast.current.weatherCode} size={34} />
+              <div><span>Current conditions</span><strong>{forecast.current.temperature.toFixed(1)}°C</strong><span>{weatherDescription(forecast.current.weatherCode)}</span></div>
             </div>
             <div className="weather-current-metric"><Thermometer size={16} /><span>Feels like</span><strong>{forecast.current.feelsLike.toFixed(1)}°C</strong></div>
             <div className="weather-current-metric"><Droplets size={16} /><span>Precipitation now</span><strong>{forecast.current.precipitation.toFixed(1)} mm</strong></div>
@@ -421,7 +442,11 @@ function WeatherLookup() {
             {signals.length ? (
               <ul>
                 {signals.map((signal, index) => (
-                  <li className={`weather-risk-item weather-risk-item--${signal.severity.toLowerCase()}`} key={`${signal.day}-${signal.title}-${index}`}>
+                  <li
+                    className={`weather-risk-item weather-risk-item--${signal.severity.toLowerCase()}`}
+                    key={`${signal.day}-${signal.title}-${index}`}
+                    style={{ animationDelay: `${index * 45}ms` }}
+                  >
                     <span>{signal.severity}</span><strong>{signal.title} · {signal.day}</strong><small>{signal.details}</small>
                   </li>
                 ))}
@@ -432,16 +457,26 @@ function WeatherLookup() {
           </section>
 
           <section className="weather-daily-section">
-            <h3>7-day outlook</h3>
+            <header className="weather-daily-heading">
+              <div><h3>7-day outlook</h3><p>Daily forecast · local time</p></div>
+              <span>Swipe to see all days</span>
+            </header>
             <div className="weather-daily-grid">
-              {forecast.daily.map((day) => (
-                <article className="weather-daily-day" key={day.date}>
-                  <span>{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                  <CloudSun size={19} />
-                  <strong>{weatherDescription(day.weatherCode)}</strong>
+              {forecast.daily.map((day, index) => (
+                <article
+                  className={`weather-daily-day${index === 0 ? ' weather-daily-day--today' : ''}`}
+                  key={day.date}
+                  style={{ animationDelay: `${index * 65}ms` }}
+                >
+                  <span className="weather-daily-date">
+                    {index === 0 ? 'Today' : new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
+                    <small>{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</small>
+                  </span>
+                  <WeatherConditionIcon code={day.weatherCode} size={23} />
+                  <strong className="weather-daily-condition">{weatherDescription(day.weatherCode)}</strong>
                   <div className="weather-daily-temps">{day.temperatureMax.toFixed(0)}° <span>/ {day.temperatureMin.toFixed(0)}°</span></div>
-                  <small><Droplets size={12} /> {day.precipitationProbability}% · {day.precipitation.toFixed(1)} mm</small>
-                  <small><Wind size={12} /> {day.windSpeedMax.toFixed(0)} km/h</small>
+                  <small className="weather-daily-rain"><Droplets size={12} /> {day.precipitationProbability}% <span>·</span> {day.precipitation.toFixed(1)} mm</small>
+                  <small className="weather-daily-wind"><Wind size={12} /> {day.windSpeedMax.toFixed(0)} km/h</small>
                 </article>
               ))}
             </div>
@@ -681,10 +716,14 @@ const WeatherAlerts = () => {
         </div>
 
         <div className="weather-alert-list">
-          {filteredAlerts.map((alert) => {
+          {filteredAlerts.map((alert, index) => {
             const status = currentStatus(alert);
             return (
-              <article className={`weather-alert-card${status === 'Active' ? ' weather-alert-card--active' : ''}`} key={alert.id}>
+              <article
+                className={`weather-alert-card${status === 'Active' ? ' weather-alert-card--active' : ''}`}
+                key={alert.id}
+                style={{ animationDelay: `${Math.min(index, 5) * 45}ms` }}
+              >
                 <div className={`weather-alert-symbol weather-alert-symbol--${alert.severity.toLowerCase()}`}>
                   {alert.type === 'Heavy rain' || alert.type === 'Flooding' ? <CloudRain size={19} /> : <AlertTriangle size={19} />}
                 </div>
