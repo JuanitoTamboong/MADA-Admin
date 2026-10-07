@@ -44,7 +44,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Users size={18} />
         <span>Farmers</span>
       </a>
-      <a href="#reports" className="nav-item">
+      <a
+        aria-current={activePage === 'reports' ? 'page' : undefined}
+        className={`nav-item${activePage === 'reports' ? ' active' : ''}`}
+        href="#reports"
+      >
         <FileText size={18} />
         <span>Reports</span>
       </a>

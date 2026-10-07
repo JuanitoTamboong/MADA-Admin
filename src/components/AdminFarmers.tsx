@@ -3,6 +3,9 @@ import {
   Check,
   ChevronDown,
   ClipboardList,
+  FileText,
+  List,
+  Map,
   MapPin,
   Pencil,
   Plus,
@@ -20,6 +23,13 @@ interface FarmerFarm {
   area: string;
 }
 
+interface FarmerReport {
+  id: string;
+  type: string;
+  date: string;
+  status: string;
+}
+
 interface Farmer {
   id: string;
   name: string;
@@ -30,6 +40,7 @@ interface Farmer {
   status: FarmerStatus;
   farms: FarmerFarm[];
   assistanceRequests: string[];
+  reports: FarmerReport[];
 }
 
 const initialFarmers: Farmer[] = [
@@ -43,6 +54,7 @@ const initialFarmers: Farmer[] = [
     status: 'Active',
     farms: [{ name: 'Sample Rice Farm', crop: 'Rice', area: '1.5 ha' }],
     assistanceRequests: ['Seed assistance — Sample record'],
+    reports: [{ id: 'R-0001', type: 'Water shortage', date: '2026-03-14', status: 'Advice Sent' }],
   },
   {
     id: 'F-0002',
@@ -54,6 +66,7 @@ const initialFarmers: Farmer[] = [
     status: 'Pending Verification',
     farms: [{ name: 'Sample Coconut Farm', crop: 'Coconut', area: '2 ha' }],
     assistanceRequests: [],
+    reports: [],
   },
   {
     id: 'F-0003',
@@ -68,6 +81,7 @@ const initialFarmers: Farmer[] = [
       { name: 'Sample Vegetable Farm', crop: 'Vegetables', area: '0.5 ha' },
     ],
     assistanceRequests: ['Training support — Sample record'],
+    reports: [{ id: 'R-0002', type: 'Pest symptoms', date: '2026-04-19', status: 'Under Review' }],
   },
   {
     id: 'F-0004',
@@ -79,6 +93,7 @@ const initialFarmers: Farmer[] = [
     status: 'Inactive',
     farms: [{ name: 'Sample Mixed Farm', crop: 'Rice', area: '0.8 ha' }],
     assistanceRequests: [],
+    reports: [],
   },
   {
     id: 'F-0005',
@@ -90,6 +105,7 @@ const initialFarmers: Farmer[] = [
     status: 'Active',
     farms: [{ name: 'Sample Coconut Farm', crop: 'Coconut', area: '3 ha' }],
     assistanceRequests: ['Fertilizer assistance — Sample record'],
+    reports: [{ id: 'R-0003', type: 'Soil erosion', date: '2026-06-01', status: 'Resolved' }],
   },
   {
     id: 'F-0006',
@@ -101,6 +117,7 @@ const initialFarmers: Farmer[] = [
     status: 'Pending Verification',
     farms: [],
     assistanceRequests: [],
+    reports: [],
   },
 ];
 
@@ -137,6 +154,7 @@ function FarmerForm({ farmer, onClose, onSave }: FarmerFormProps) {
           ? farmer.farms.map((farm, index) => (index === 0 ? { ...farm, crop: crop.trim() } : farm))
           : [],
       assistanceRequests: farmer?.assistanceRequests ?? [],
+      reports: farmer?.reports ?? [],
     });
   };
 
@@ -266,6 +284,22 @@ function FarmerProfile({ farmer, onClose, onEdit }: { farmer: Farmer; onClose: (
           )}
         </div>
 
+        <div className="farmer-profile-section">
+          <h3>Submitted reports <span>{farmer.reports.length}</span></h3>
+          {farmer.reports.length ? (
+            <div className="farmer-profile-list">
+              {farmer.reports.map((report) => (
+                <div className="farmer-detail-row" key={report.id}>
+                  <div><strong>{report.type}</strong><span>{report.id} · {report.date}</span></div>
+                  <span className="farmer-report-status">{report.status}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="farmer-empty-detail">No submitted reports in this sample record.</p>
+          )}
+        </div>
+
         <div className="farmers-modal-actions">
           <button className="farmers-button farmers-button--secondary" onClick={onClose} type="button">
             Close
@@ -281,6 +315,7 @@ function FarmerProfile({ farmer, onClose, onEdit }: { farmer: Farmer; onClose: (
 
 const AdminFarmers = () => {
   const [farmers, setFarmers] = useState(initialFarmers);
+  const [view, setView] = useState<'list' | 'map'>('list');
   const [search, setSearch] = useState('');
   const [barangayFilter, setBarangayFilter] = useState(allFilter);
   const [cropFilter, setCropFilter] = useState(allFilter);
@@ -343,7 +378,7 @@ const AdminFarmers = () => {
           <p className="farmers-page-description">Find and manage farmer records across the community.</p>
         </div>
         <button className="farmers-button farmers-button--primary" onClick={() => setFormFarmer(null)} type="button">
-          <Plus size={17} /> Add farmer
+          <Plus size={17} /> Register farmer
         </button>
       </header>
 
@@ -376,6 +411,24 @@ const AdminFarmers = () => {
           <div>
             <h2>Farmer directory</h2>
             <p>{filteredFarmers.length} {filteredFarmers.length === 1 ? 'record' : 'records'} shown</p>
+          </div>
+          <div aria-label="Directory view" className="farmers-view-toggle" role="group">
+            <button
+              aria-pressed={view === 'list'}
+              className={view === 'list' ? 'farmers-view-button farmers-view-button--active' : 'farmers-view-button'}
+              onClick={() => setView('list')}
+              type="button"
+            >
+              <List size={15} /> List
+            </button>
+            <button
+              aria-pressed={view === 'map'}
+              className={view === 'map' ? 'farmers-view-button farmers-view-button--active' : 'farmers-view-button'}
+              onClick={() => setView('map')}
+              type="button"
+            >
+              <Map size={15} /> Map
+            </button>
           </div>
         </div>
         <div className="farmers-filters">
@@ -414,15 +467,16 @@ const AdminFarmers = () => {
           </label>
         </div>
 
-        <div className="farmers-table-wrap">
+        {view === 'list' ? <div className="farmers-table-wrap">
           <table className="farmers-table">
             <thead>
               <tr>
+                <th scope="col">Farmer ID</th>
                 <th scope="col">Farmer</th>
                 <th scope="col">Barangay</th>
-                <th scope="col">Phone</th>
-                <th scope="col">Farms</th>
+                <th scope="col">Contact status</th>
                 <th scope="col">Main crop</th>
+                <th scope="col">Farms</th>
                 <th scope="col">Registration status</th>
                 <th scope="col"><span className="farmers-visually-hidden">Actions</span></th>
               </tr>
@@ -430,16 +484,21 @@ const AdminFarmers = () => {
             <tbody>
               {filteredFarmers.map((farmer) => (
                 <tr key={farmer.id}>
+                  <td>{farmer.id}</td>
                   <td>
                     <div className="farmer-table-identity">
                       <div className="farmer-avatar">{farmer.name.slice(-3)}</div>
-                      <div><strong>{farmer.name}</strong><span>{farmer.id}</span></div>
+                      <div><strong>{farmer.name}</strong></div>
                     </div>
                   </td>
                   <td>{farmer.barangay}</td>
-                  <td>{farmer.phone}</td>
-                  <td>{farmer.farms.length}</td>
+                  <td>
+                    <span className={`farmer-contact-status${farmer.phone === 'Not provided' ? ' farmer-contact-status--missing' : ''}`}>
+                      {farmer.phone === 'Not provided' ? 'Not provided' : 'Available'}
+                    </span>
+                  </td>
                   <td>{farmer.mainCrop || 'Not recorded'}</td>
+                  <td>{farmer.farms.length}</td>
                   <td>
                     <span className={`farmer-status farmer-status--${farmer.status.toLowerCase().replaceAll(' ', '-')}`}>
                       {farmer.status}
@@ -464,14 +523,51 @@ const AdminFarmers = () => {
               ))}
               {filteredFarmers.length === 0 && (
                 <tr>
-                  <td className="farmers-empty-state" colSpan={7}>
+                  <td className="farmers-empty-state" colSpan={8}>
                     No farmers match these search and filter criteria.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
+        </div> : (
+          <div className="farmers-map-overview">
+            <div className="farmers-map-notice">
+              <MapPin size={17} />
+              <p><strong>Barangay-level overview · not to scale.</strong> No verified farmer or farm coordinates are available, so no map markers are shown.</p>
+            </div>
+            <div className="farmers-map-groups">
+              {barangays
+                .filter((name) => barangayFilter === allFilter || name === barangayFilter)
+                .map((name) => {
+                  const group = filteredFarmers.filter((farmer) => farmer.barangay === name);
+                  return (
+                    <section className="farmers-map-group" key={name}>
+                      <header>
+                        <span className="farmers-map-group-icon"><MapPin size={16} /></span>
+                        <div><h3>{name}</h3><p>{group.length} matching {group.length === 1 ? 'farmer' : 'farmers'}</p></div>
+                        <span className="farmers-map-count">{group.length}</span>
+                      </header>
+                      {group.length ? (
+                        <ul>
+                          {group.map((farmer) => (
+                            <li key={farmer.id}>
+                              <span className="farmer-map-record">
+                                <strong>{farmer.name}</strong>
+                                <span>{farmer.id} · {farmer.mainCrop || 'Crop not recorded'} · {farmer.farms.length} {farmer.farms.length === 1 ? 'farm' : 'farms'}</span>
+                              </span>
+                              <button className="farmer-text-action" onClick={() => setSelectedFarmer(farmer)} type="button">View profile</button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="farmers-map-empty">No farmers match the current search and filters.</p>}
+                    </section>
+                  );
+                })}
+            </div>
+            <p className="farmers-map-footnote"><FileText size={14} /> Records are grouped by their barangay only; this view does not imply precise or verified locations.</p>
+          </div>
+        )}
       </section>
 
       {selectedFarmer && (

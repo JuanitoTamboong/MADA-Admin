@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
 import AdminFarmers from './AdminFarmers';
+import AdminReports from './AdminReports';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -69,6 +70,8 @@ export const AdminDashboard: React.FC = () => {
 
         {activePage === 'farmers' ? (
           <AdminFarmers />
+        ) : activePage === 'reports' ? (
+          <AdminReports />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">

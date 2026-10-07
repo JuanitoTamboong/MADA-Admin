@@ -636,6 +636,201 @@
   font-size: 0.61rem;
 }
 
+.farmers-view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid #e3ebe5;
+  border-radius: 7px;
+  background: #f7f9f7;
+}
+
+.farmers-view-button {
+  display: inline-flex;
+  min-height: 29px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #6e7e73;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.farmers-view-button--active {
+  background: #fff;
+  color: #216c41;
+  box-shadow: 0 1px 3px rgba(32, 67, 44, 0.1);
+}
+
+.farmers-contact-status {
+  color: #267246;
+  font-size: 0.57rem;
+  font-weight: 650;
+}
+
+.farmers-contact-status--missing {
+  color: #87938b;
+  font-weight: 500;
+}
+
+.farmers-map-overview {
+  padding: 14px 18px 16px;
+  border-top: 1px solid #edf1ee;
+}
+
+.farmers-map-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid #e8e3c9;
+  border-radius: 7px;
+  background: #fffdf5;
+  color: #766b45;
+  font-size: 0.59rem;
+}
+
+.farmers-map-notice svg {
+  flex: 0 0 auto;
+  color: #9b8542;
+}
+
+.farmers-map-notice strong {
+  color: #6f5e29;
+}
+
+.farmers-map-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.farmers-map-group {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e7eeea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.farmers-map-group > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 11px;
+  background: #f7faf8;
+}
+
+.farmers-map-group-icon {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  background: #eaf4ed;
+  color: #34754d;
+}
+
+.farmers-map-group > header > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.farmers-map-group h3 {
+  margin: 0;
+  color: #354a3c;
+  font-size: 0.63rem;
+}
+
+.farmers-map-group > header p {
+  margin-top: 2px;
+  color: #859188;
+  font-size: 0.53rem;
+}
+
+.farmers-map-count {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e8f3eb;
+  color: #34744d;
+  font-size: 0.55rem;
+  font-weight: 750;
+}
+
+.farmers-map-group ul {
+  margin: 0;
+  padding: 0 11px;
+  list-style: none;
+}
+
+.farmers-map-group li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 46px;
+  border-top: 1px solid #eff3f0;
+}
+
+.farmer-map-record {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.farmer-map-record strong {
+  overflow: hidden;
+  color: #3b4d42;
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.farmer-map-record > span {
+  color: #87938b;
+  font-size: 0.51rem;
+}
+
+.farmers-map-group .farmer-text-action {
+  flex: 0 0 auto;
+}
+
+.farmers-map-empty {
+  padding: 12px;
+  color: #87938b;
+  font-size: 0.57rem;
+}
+
+.farmers-map-footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 11px;
+  color: #87938b;
+  font-size: 0.54rem;
+}
+
+.farmer-report-status {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #eff5f0;
+  color: #4d7359;
+  font-size: 0.51rem;
+}
+
 @media (max-width: 1000px) {
   .farmers-page {
     padding: 22px 18px 30px;
@@ -700,6 +895,17 @@
     padding: 14px 12px 11px;
   }
 
+  .farmers-directory-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .farmers-view-button {
+    padding: 0 7px;
+  }
+
   .farmers-filters {
     gap: 7px;
     padding: 0 12px 12px;
@@ -718,5 +924,13 @@
   .farmers-modal {
     max-height: calc(100vh - 24px);
     padding: 17px;
+  }
+
+  .farmers-map-overview {
+    padding: 12px;
+  }
+
+  .farmers-map-groups {
+    grid-template-columns: 1fr;
   }
 }
