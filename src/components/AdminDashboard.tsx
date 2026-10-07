@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Users,
   FileText,
@@ -11,11 +11,14 @@ import {
   Bell,
   ChevronDown,
   ChevronRight,
+  LogOut,
   TrendingUp,
   PieChart,
   ShieldAlert,
+  UserRound,
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
+import { supabase } from '../supabase/supabase-client';
 import SettingsPage from './Settings';
 import AdminFarmers from './AdminFarmers';
 import AdminReports from './AdminReports';
@@ -27,10 +30,17 @@ import AdminAnnouncements from './AdminAnnouncements';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onLogout: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activePage, setActivePage] = useState(
     () => window.location.hash.slice(1) || 'dashboard',
   );
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateActivePage = () => {
@@ -40,6 +50,42 @@ export const AdminDashboard: React.FC = () => {
     window.addEventListener('hashchange', updateActivePage);
     return () => window.removeEventListener('hashchange', updateActivePage);
   }, []);
+
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsProfileMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isProfileMenuOpen]);
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setLogoutError(`Unable to log out: ${error.message}`);
+        return;
+      }
+      onLogout();
+    } catch (error) {
+      setLogoutError(
+        `Unable to log out: ${error instanceof Error ? error.message : 'An unexpected error occurred.'}`,
+      );
+    }
+  };
 
   return (
     <PageLayout className="page-layout--dashboard">
@@ -63,13 +109,52 @@ export const AdminDashboard: React.FC = () => {
               <span className="notification-badge">3</span>
             </button>
 
-            <div className="user-profile">
-              <div className="avatar-circle">AD</div>
-              <div className="user-meta">
-                <span className="user-name">Admin</span>
-                <span className="user-role">Administrator</span>
-              </div>
-              <ChevronDown size={16} className="dropdown-arrow" />
+            <div className="profile-menu" ref={profileMenuRef}>
+              <button
+                aria-expanded={isProfileMenuOpen}
+                aria-haspopup="menu"
+                className="user-profile"
+                onClick={() => {
+                  setLogoutError('');
+                  setIsProfileMenuOpen((isOpen) => !isOpen);
+                }}
+                type="button"
+              >
+                <span className="avatar-circle">AD</span>
+                <span className="user-meta">
+                  <span className="user-name">Admin</span>
+                  <span className="user-role">Administrator</span>
+                </span>
+                <ChevronDown size={16} className="dropdown-arrow" />
+              </button>
+              {isProfileMenuOpen && (
+                <div className="profile-dropdown" role="menu">
+                  <button
+                    className="profile-dropdown-item"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      window.location.hash = 'settings';
+                    }}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <UserRound size={16} />
+                    Profile
+                  </button>
+                  <button
+                    className="profile-dropdown-item profile-dropdown-item--danger"
+                    onClick={handleLogout}
+                    role="menuitem"
+                    type="button"
+                  >
+                    <LogOut size={16} />
+                    Log out
+                  </button>
+                  {logoutError && (
+                    <p className="profile-dropdown-error" role="alert">{logoutError}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </header>

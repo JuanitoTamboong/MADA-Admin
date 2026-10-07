@@ -9,7 +9,7 @@ function App() {
   return (
     <div className="App">
       {isLoggedIn ? (
-        <AdminDashboard />
+        <AdminDashboard onLogout={() => setIsLoggedIn(false)} />
       ) : (
         <AdminLogin onLogin={() => setIsLoggedIn(true)} />
       )}
