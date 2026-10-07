@@ -19,6 +19,7 @@ import '../css/AdminDashboard.css';
 import AdminFarmers from './AdminFarmers';
 import AdminReports from './AdminReports';
 import CropProduction from './CropProduction';
+import WeatherAlerts from './WeatherAlerts';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -75,6 +76,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminReports />
         ) : activePage === 'crops' ? (
           <CropProduction />
+        ) : activePage === 'weather' ? (
+          <WeatherAlerts />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">

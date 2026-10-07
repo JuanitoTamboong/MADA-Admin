@@ -60,7 +60,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Sprout size={18} />
         <span>Crops &amp; Production</span>
       </a>
-      <a href="#weather" className="nav-item">
+      <a
+        aria-current={activePage === 'weather' ? 'page' : undefined}
+        className={`nav-item${activePage === 'weather' ? ' active' : ''}`}
+        href="#weather"
+      >
         <CloudSun size={18} />
         <span>Weather &amp; Alerts</span>
       </a>
