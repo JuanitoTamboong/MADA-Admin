@@ -1,11 +1,9 @@
 import React from 'react';
 import {
-  LayoutDashboard,
   Users,
   FileText,
   Sprout,
   CloudSun,
-  UserCheck,
   BarChart3,
   Megaphone,
   Settings,
@@ -18,78 +16,12 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
-import mayaBird from '../assets/images/maya-bird.png';
+import SideNav from '../navigation/SideNav';
 
 export const AdminDashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
-      {/* 1. LEFT SIDEBAR */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img src={mayaBird} alt="AgriAssist logo" className="brand-logo" />
-          <div className="brand-info">
-            <h1 className="brand-title">MADA</h1>
-            <p className="brand-tagline">Smarter Farms, Stronger Communities</p>
-          </div>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a href="#dashboard" className="nav-item active">
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </a>
-          <a href="#farmers" className="nav-item">
-            <Users size={18} />
-            <span>Farmers</span>
-          </a>
-          <a href="#reports" className="nav-item">
-            <FileText size={18} />
-            <span>Reports</span>
-          </a>
-          <a href="#crops" className="nav-item">
-            <Sprout size={18} />
-            <span>Crops & Production</span>
-          </a>
-          <a href="#weather" className="nav-item">
-            <CloudSun size={18} />
-            <span>Weather & Alerts</span>
-          </a>
-          <a href="#users" className="nav-item">
-            <UserCheck size={18} />
-            <span>User Management</span>
-          </a>
-          <a href="#analytics" className="nav-item">
-            <BarChart3 size={18} />
-            <span>Analytics</span>
-          </a>
-          <a href="#announcements" className="nav-item">
-            <Megaphone size={18} />
-            <span>Announcements</span>
-          </a>
-          <a href="#settings" className="nav-item">
-            <Settings size={18} />
-            <span>Settings</span>
-          </a>
-        </nav>
-
-        {/* AgriAssist promo box */}
-        <div className="sidebar-promo-card">
-          <div className="promo-bg" />
-          <div className="promo-content">
-            <Sprout size={22} className="promo-icon" />
-            <p className="promo-text">Together for a Greener Tomorrow</p>
-          </div>
-        </div>
-
-        {/* Sidebar Footer Branding */}
-        <div className="sidebar-footer">
-          <img src={mayaBird} alt="AgriAssist" className="footer-mini-logo" />
-          <div className="footer-brand-meta">
-            <span className="footer-brand-name">MADA</span>
-            <span className="footer-brand-version">v1.0.0</span>
-          </div>
-        </div>
-      </aside>
+      <SideNav />
 
       {/* 2. MAIN CONTENT AREA */}
       <div className="main-wrapper">
