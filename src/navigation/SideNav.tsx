@@ -68,9 +68,13 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <CloudSun size={18} />
         <span>Weather &amp; Alerts</span>
       </a>
-      <a href="#map" className="nav-item">
+      <a
+        aria-current={activePage === 'map' ? 'page' : undefined}
+        className={`nav-item${activePage === 'map' ? ' active' : ''}`}
+        href="#map"
+      >
         <Map size={18} />
-        <span>Map</span>
+        <span>Farmers Map</span>
       </a>
       <a href="#analytics" className="nav-item">
         <BarChart3 size={18} />

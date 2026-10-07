@@ -20,6 +20,7 @@ import AdminFarmers from './AdminFarmers';
 import AdminReports from './AdminReports';
 import CropProduction from './CropProduction';
 import WeatherAlerts from './WeatherAlerts';
+import AdminMap from './AdminMap';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -78,6 +79,8 @@ export const AdminDashboard: React.FC = () => {
           <CropProduction />
         ) : activePage === 'weather' ? (
           <WeatherAlerts />
+        ) : activePage === 'map' ? (
+          <AdminMap />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">
