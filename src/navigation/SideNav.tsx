@@ -76,7 +76,11 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Map size={18} />
         <span>Farmers Map</span>
       </a>
-      <a href="#analytics" className="nav-item">
+      <a
+        aria-current={activePage === 'analytics' ? 'page' : undefined}
+        className={`nav-item${activePage === 'analytics' ? ' active' : ''}`}
+        href="#analytics"
+      >
         <BarChart3 size={18} />
         <span>Analytics</span>
       </a>

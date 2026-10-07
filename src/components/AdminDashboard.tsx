@@ -21,6 +21,7 @@ import AdminReports from './AdminReports';
 import CropProduction from './CropProduction';
 import WeatherAlerts from './WeatherAlerts';
 import AdminMap from './AdminMap';
+import AdminAnalytics from './AdminAnalytics';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -81,6 +82,8 @@ export const AdminDashboard: React.FC = () => {
           <WeatherAlerts />
         ) : activePage === 'map' ? (
           <AdminMap />
+        ) : activePage === 'analytics' ? (
+          <AdminAnalytics />
         ) : (
         /* DASHBOARD BODY GRID */
         <main className="dashboard-content">
@@ -134,7 +137,7 @@ export const AdminDashboard: React.FC = () => {
               <button className="action-pill">
                 <FileText size={16} /> <span>Reports</span>
               </button>
-              <button className="action-pill">
+              <button className="action-pill" onClick={() => { window.location.hash = 'analytics'; }}>
                 <BarChart3 size={16} /> <span>Analytics</span>
               </button>
               <button className="action-pill">
