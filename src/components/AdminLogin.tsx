@@ -3,16 +3,49 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react';
 import '../css/AdminLogin.css';
 import mayaBird from '../assets/images/maya-bird.png';
 import PageLayout from '../shared/PageLayout';
+// Import the Supabase client (adjust path if needed based on your folder structure)
+import { supabase } from '../supabase/supabase-client'; 
 
-export const AdminLogin: React.FC = () => {
+// Add the onLogin prop interface
+interface AdminLoginProps {
+  onLogin: () => void;
+}
+
+export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Add loading and error states
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Logging in with:', { email, password, rememberMe });
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Call Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // If successful, trigger the onLogin callback
+      if (data.user) {
+        onLogin();
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to login. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,6 +76,13 @@ export const AdminLogin: React.FC = () => {
           <p>Enter your credentials to access your dashboard</p>
         </div>
 
+        {/* Error Message Display */}
+        {error && (
+          <div style={{ color: '#ff4d4f', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
+            {error}
+          </div>
+        )}
+
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="admin-form">
           {/* Email Address */}
@@ -57,6 +97,7 @@ export const AdminLogin: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@mada.gov.ph"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -73,6 +114,7 @@ export const AdminLogin: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -92,6 +134,7 @@ export const AdminLogin: React.FC = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={isLoading}
               />
               <span className="checkbox-custom" />
               <span className="checkbox-label">Remember me</span>
@@ -103,9 +146,9 @@ export const AdminLogin: React.FC = () => {
           </div>
 
           {/* Submit CTA */}
-          <button type="submit" className="login-submit-btn">
-            <span>Sign In to Dashboard</span>
-            <ArrowRight size={18} />
+          <button type="submit" className="login-submit-btn" disabled={isLoading}>
+            <span>{isLoading ? 'Signing In...' : 'Sign In to Dashboard'}</span>
+            {!isLoading && <ArrowRight size={18} />}
           </button>
         </form>
 
