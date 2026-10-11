@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   CalendarDays,
   ChevronDown,
@@ -11,9 +11,11 @@ import {
   X,
 } from 'lucide-react';
 import '../css/CropProduction.css';
+import { supabase } from '../supabase/supabase-client';
 
-type CropStatus = 'Growing' | 'Ready to Harvest' | 'Harvested';
-type QuantitySource = 'Farmer-reported' | 'Estimated' | 'Verified' | 'Not recorded';
+// ---------- types ----------
+
+type CropStatus = 'Growing' | 'Ready to Harvest' | 'Harvested' | 'Fallow';
 
 interface CropRecord {
   id: string;
@@ -26,177 +28,156 @@ interface CropRecord {
   area: number;
   plantingDate: string;
   expectedHarvest: string;
-  season: string;
   status: CropStatus;
-  harvestQuantity: number | null;
-  harvestUnit: string;
-  harvestDate: string;
-  quantitySource: QuantitySource;
-  relatedReports: string[];
+  imagePath: string | null;
 }
 
-const initialRecords: CropRecord[] = [
-  {
-    id: 'C-2026-001',
-    farmerId: 'F-0001',
-    farmerName: 'Sample Farmer 001',
-    farm: 'Sample Rice Farm',
-    barangay: 'Sample Barangay A',
-    crop: 'Rice',
-    variety: 'Sample variety A',
-    area: 1.5,
-    plantingDate: '2026-06-12',
-    expectedHarvest: '2026-10-20',
-    season: 'Wet Season',
-    status: 'Ready to Harvest',
-    harvestQuantity: null,
-    harvestUnit: 'kg',
-    harvestDate: '',
-    quantitySource: 'Not recorded',
-    relatedReports: ['R-2026-013'],
-  },
-  {
-    id: 'C-2026-002',
-    farmerId: 'F-0003',
-    farmerName: 'Sample Farmer 003',
-    farm: 'Sample Corn Farm',
-    barangay: 'Sample Barangay A',
-    crop: 'Corn',
-    variety: 'Sample variety B',
-    area: 1,
-    plantingDate: '2026-07-03',
-    expectedHarvest: '2026-11-15',
-    season: 'Wet Season',
-    status: 'Growing',
-    harvestQuantity: null,
-    harvestUnit: 'kg',
-    harvestDate: '',
-    quantitySource: 'Not recorded',
-    relatedReports: ['R-2026-014'],
-  },
-  {
-    id: 'C-2026-003',
-    farmerId: 'F-0003',
-    farmerName: 'Sample Farmer 003',
-    farm: 'Sample Vegetable Farm',
-    barangay: 'Sample Barangay A',
-    crop: 'Vegetables',
-    variety: 'Sample leafy greens',
-    area: 0.5,
-    plantingDate: '2026-08-05',
-    expectedHarvest: '2026-10-28',
-    season: 'Wet Season',
-    status: 'Growing',
-    harvestQuantity: null,
-    harvestUnit: 'kg',
-    harvestDate: '',
-    quantitySource: 'Not recorded',
-    relatedReports: ['R-2026-010'],
-  },
-  {
-    id: 'C-2026-004',
-    farmerId: 'F-0002',
-    farmerName: 'Sample Farmer 002',
-    farm: 'Sample Coconut Farm',
-    barangay: 'Sample Barangay B',
-    crop: 'Coconut',
-    variety: 'Sample variety C',
-    area: 2,
-    plantingDate: '2025-05-10',
-    expectedHarvest: '2026-12-01',
-    season: 'Dry Season',
-    status: 'Growing',
-    harvestQuantity: null,
-    harvestUnit: 'kg',
-    harvestDate: '',
-    quantitySource: 'Not recorded',
-    relatedReports: ['R-2026-011'],
-  },
-  {
-    id: 'C-2026-005',
-    farmerId: 'F-0004',
-    farmerName: 'Sample Farmer 004',
-    farm: 'Sample Mixed Farm',
-    barangay: 'Sample Barangay C',
-    crop: 'Rice',
-    variety: 'Sample variety D',
-    area: 0.8,
-    plantingDate: '2026-01-18',
-    expectedHarvest: '2026-05-26',
-    season: 'Dry Season',
-    status: 'Harvested',
-    harvestQuantity: 1850,
-    harvestUnit: 'kg',
-    harvestDate: '2026-05-29',
-    quantitySource: 'Farmer-reported',
-    relatedReports: ['R-2026-009'],
-  },
-  {
-    id: 'C-2026-006',
-    farmerId: 'F-0005',
-    farmerName: 'Sample Farmer 005',
-    farm: 'Sample Coconut Farm',
-    barangay: 'Sample Barangay B',
-    crop: 'Coconut',
-    variety: 'Sample variety E',
-    area: 3,
-    plantingDate: '2025-08-22',
-    expectedHarvest: '2026-09-30',
-    season: 'Wet Season',
-    status: 'Harvested',
-    harvestQuantity: 950,
-    harvestUnit: 'kg',
-    harvestDate: '2026-10-02',
-    quantitySource: 'Verified',
-    relatedReports: ['R-2026-012'],
-  },
-];
+interface FarmRow {
+  id: string;
+  farmer_id: string;
+  name: string;
+  crop: string | null;
+  variety: string | null;
+  area_hectares: number;
+  location: string | null;
+  status: string | null;
+  planted_date: string | null;
+  expected_harvest: string | null;
+  image_url: string | null;
+}
 
-const statuses: CropStatus[] = ['Growing', 'Ready to Harvest', 'Harvested'];
-const quantitySources: QuantitySource[] = ['Farmer-reported', 'Estimated', 'Verified', 'Not recorded'];
-const cropOptions = [...new Set(initialRecords.map((record) => record.crop))];
-const barangayOptions = [...new Set(initialRecords.map((record) => record.barangay))];
-const seasonOptions = [...new Set(initialRecords.map((record) => record.season))];
+interface FarmerRow {
+  id: string;
+  full_name: string;
+  address: string | null;
+}
+
+// ---------- constants + helpers ----------
+
+const statuses: CropStatus[] = ['Growing', 'Ready to Harvest', 'Harvested', 'Fallow'];
 const allFilter = 'All';
 
-function formatDate(date: string) {
+function toUiStatus(raw: string | null | undefined): CropStatus {
+  if (!raw) return 'Growing';
+  const lower = raw.toLowerCase();
+  if (lower === 'harvested') return 'Harvested';
+  if (lower === 'fallow') return 'Fallow';
+  if (lower === 'ready to harvest') return 'Ready to Harvest';
+  return 'Growing';
+}
+
+// Maps the UI-only "Ready to Harvest" back to the DB-allowed "Growing".
+// (The check constraint on farms.status allows Growing/Harvested/Fallow only.)
+function toDbStatus(ui: CropStatus): string {
+  if (ui === 'Ready to Harvest') return 'Growing';
+  return ui;
+}
+
+function statusClass(ui: CropStatus): string {
+  return ui.toLowerCase().replaceAll(' ', '-');
+}
+
+function formatDate(date: string | null): string {
   if (!date) return 'Not set';
-  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+  const d = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return 'Not set';
+  return d.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
 }
 
-interface CropRecordFormProps {
-  record: CropRecord;
-  onClose: () => void;
-  onSave: (record: CropRecord) => void;
+function initialFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts[0][0].toUpperCase();
 }
 
-function CropRecordForm({ record, onClose, onSave }: CropRecordFormProps) {
-  const [status, setStatus] = useState(record.status);
-  const [quantity, setQuantity] = useState(
-    record.harvestQuantity === null ? '' : String(record.harvestQuantity),
+// Should we skip signing for this value? True for http(s) URLs and data URIs.
+function isDirectUrl(raw: string): boolean {
+  return /^https?:\/\//i.test(raw) || /^data:/i.test(raw);
+}
+
+// Batch-sign storage paths. Non-path values (URLs, data URIs, blanks)
+// are filtered out before the round-trip.
+async function signFarmImageUrls(
+  paths: string[],
+): Promise<Record<string, string>> {
+  const uniq = Array.from(
+    new Set(paths.filter((p) => p && !isDirectUrl(p))),
   );
-  const [unit, setUnit] = useState(record.harvestUnit);
-  const [reportingDate, setReportingDate] = useState(record.harvestDate);
-  const [source, setSource] = useState(record.quantitySource);
+  if (uniq.length === 0) return {};
+
+  const { data, error } = await supabase.storage
+    .from('pest-reports')
+    .createSignedUrls(uniq, 60 * 60);
+
+  if (error || !data) return {};
+
+  const map: Record<string, string> = {};
+  for (const row of data) {
+    if (row.path && row.signedUrl) map[row.path] = row.signedUrl;
+  }
+  return map;
+}
+
+// Resolve the best URL for a farms.image_url value.
+function resolveImageUrl(
+  raw: string | null,
+  signed: Record<string, string>,
+): string | null {
+  if (!raw) return null;
+  if (isDirectUrl(raw)) return raw;         // data URI or http(s) URL
+  return signed[raw] ?? null;                // storage path
+}
+
+// ---------- edit form ----------
+
+interface CropRecordFormProps {
+  record: CropRecord;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (
+    id: string,
+    patch: {
+      status: string;
+      crop: string;
+      variety: string;
+      area_hectares: number;
+      planted_date: string | null;
+      expected_harvest: string | null;
+    },
+  ) => void;
+}
+
+function CropRecordForm({ record, saving, onClose, onSave }: CropRecordFormProps) {
+  const [status, setStatus] = useState<CropStatus>(record.status);
+  const [crop, setCrop] = useState(record.crop);
+  const [variety, setVariety] = useState(record.variety);
+  const [area, setArea] = useState(String(record.area));
+  const [plantedDate, setPlantedDate] = useState(record.plantingDate);
+  const [expectedHarvest, setExpectedHarvest] = useState(record.expectedHarvest);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSave({
-      ...record,
-      status,
-      harvestQuantity: quantity.trim() ? Number(quantity) : null,
-      harvestUnit: unit.trim() || 'kg',
-      harvestDate: reportingDate,
-      quantitySource: quantity.trim() ? source : 'Not recorded',
+    if (saving) return;
+
+    const parsedArea = Number.parseFloat(area);
+    if (!Number.isFinite(parsedArea) || parsedArea <= 0) return;
+
+    onSave(record.id, {
+      status: toDbStatus(status),
+      crop: crop.trim(),
+      variety: variety.trim(),
+      area_hectares: parsedArea,
+      planted_date: plantedDate || null,
+      expected_harvest: expectedHarvest || null,
     });
   };
 
   return (
-    <div className="crops-modal-backdrop" onMouseDown={onClose}>
+    <div className="crops-modal-backdrop" onMouseDown={saving ? undefined : onClose}>
       <section
         aria-labelledby="crop-edit-title"
         aria-modal="true"
@@ -206,50 +187,104 @@ function CropRecordForm({ record, onClose, onSave }: CropRecordFormProps) {
       >
         <header className="crops-modal-header">
           <div>
-            <p className="crops-eyebrow">{record.id} · SAMPLE RECORD</p>
+            <p className="crops-eyebrow">{record.farmerName}</p>
             <h2 id="crop-edit-title">Update crop record</h2>
-            <p>{record.crop} · {record.farm} · {record.farmerName}</p>
+            <p>{record.farm}</p>
           </div>
-          <button aria-label="Close form" className="crops-icon-button" onClick={onClose} type="button"><X size={19} /></button>
+          <button
+            aria-label="Close form"
+            className="crops-icon-button"
+            onClick={onClose}
+            disabled={saving}
+            type="button"
+          >
+            <X size={19} />
+          </button>
         </header>
-        <p className="crops-modal-note">Changes are held for this browser session only; this prototype does not save to a database.</p>
+
         <form className="crops-form" onSubmit={submit}>
           <label>
-            Production status
-            <select onChange={(event) => setStatus(event.target.value as CropStatus)} value={status}>
-              {statuses.map((option) => <option key={option} value={option}>{option}</option>)}
+            Crop
+            <input
+              onChange={(event) => setCrop(event.target.value)}
+              required
+              value={crop}
+              disabled={saving}
+            />
+          </label>
+
+          <label>
+            Variety
+            <input
+              onChange={(event) => setVariety(event.target.value)}
+              value={variety}
+              disabled={saving}
+            />
+          </label>
+
+          <label>
+            Area (hectares)
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              required
+              onChange={(event) => setArea(event.target.value)}
+              value={area}
+              disabled={saving}
+            />
+          </label>
+
+          <label>
+            Planting date
+            <input
+              type="date"
+              onChange={(event) => setPlantedDate(event.target.value)}
+              value={plantedDate}
+              disabled={saving}
+            />
+          </label>
+
+          <label>
+            Expected harvest
+            <input
+              type="date"
+              onChange={(event) => setExpectedHarvest(event.target.value)}
+              value={expectedHarvest}
+              disabled={saving}
+            />
+          </label>
+
+          <label>
+            Status
+            <select
+              onChange={(event) => setStatus(event.target.value as CropStatus)}
+              value={status}
+              disabled={saving}
+            >
+              {statuses.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
             </select>
           </label>
-          <div className="crops-form-divider"><span>Harvest record</span></div>
-          <label>
-            Quantity <span className="crops-optional">Leave blank if not reported</span>
-            <input min="0" onChange={(event) => setQuantity(event.target.value)} step="any" type="number" value={quantity} />
-          </label>
-          <label>
-            Unit
-            <select onChange={(event) => setUnit(event.target.value)} value={unit}>
-              <option value="kg">Kilograms (kg)</option>
-              <option value="sacks">Sacks</option>
-              <option value="tons">Metric tons</option>
-              <option value="pieces">Pieces</option>
-            </select>
-          </label>
-          <label>
-            Reporting date
-            <input onChange={(event) => setReportingDate(event.target.value)} type="date" value={reportingDate} />
-          </label>
-          <label>
-            Quantity source
-            <select disabled={!quantity.trim()} onChange={(event) => setSource(event.target.value as QuantitySource)} value={quantity.trim() ? source : 'Not recorded'}>
-              {quantitySources.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
-          <div className="crops-source-guidance">
-            Mark a quantity as <strong>Verified</strong> only after an authorized staff member has confirmed it. Estimated and farmer-reported values are not verified harvest.
-          </div>
+
           <footer className="crops-modal-actions">
-            <button className="crops-button crops-button--secondary" onClick={onClose} type="button">Cancel</button>
-            <button className="crops-button crops-button--primary" type="submit"><Pencil size={15} /> Save update</button>
+            <button
+              className="crops-button crops-button--secondary"
+              onClick={onClose}
+              type="button"
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              className="crops-button crops-button--primary"
+              type="submit"
+              disabled={saving}
+            >
+              <Pencil size={15} />
+              {saving ? 'Saving…' : 'Save update'}
+            </button>
           </footer>
         </form>
       </section>
@@ -257,7 +292,16 @@ function CropRecordForm({ record, onClose, onSave }: CropRecordFormProps) {
   );
 }
 
-function CropDetails({ record, onClose, onEdit }: { record: CropRecord; onClose: () => void; onEdit: () => void }) {
+// ---------- detail modal ----------
+
+interface CropDetailsProps {
+  record: CropRecord;
+  imageUrl: string | null;
+  onClose: () => void;
+  onEdit: () => void;
+}
+
+function CropDetails({ record, imageUrl, onClose, onEdit }: CropDetailsProps) {
   return (
     <div className="crops-modal-backdrop" onMouseDown={onClose}>
       <section
@@ -267,93 +311,252 @@ function CropDetails({ record, onClose, onEdit }: { record: CropRecord; onClose:
         onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <header className="crops-modal-header">
-          <div>
-            <p className="crops-eyebrow">{record.id} · SAMPLE RECORD</p>
-            <h2 id="crop-detail-title">{record.crop} · {record.variety}</h2>
-            <p>{record.farm} · {record.barangay}</p>
-          </div>
-          <button aria-label="Close details" className="crops-icon-button" onClick={onClose} type="button"><X size={19} /></button>
-        </header>
-        <div className="crops-detail-status-row">
-          <span className={`crop-status crop-status--${record.status.toLowerCase().replaceAll(' ', '-')}`}>{record.status}</span>
-          <span>{record.season}</span>
-        </div>
-        <div className="crops-detail-grid">
-          <div><span>Farmer</span><strong>{record.farmerName}</strong><a href="#farmers">Open farmer directory ↗</a></div>
-          <div><span>Farm</span><strong>{record.farm}</strong><small>{record.farmerId}</small></div>
-          <div><span>Barangay</span><strong>{record.barangay}</strong></div>
-          <div><span>Planted area</span><strong>{record.area} ha</strong></div>
-          <div><span>Planting date</span><strong>{formatDate(record.plantingDate)}</strong></div>
-          <div><span>Expected harvest</span><strong>{formatDate(record.expectedHarvest)}</strong></div>
-        </div>
-        <section className="crops-detail-harvest">
-          <h3>Harvest record</h3>
-          {record.harvestQuantity === null ? (
-            <p>No harvest quantity recorded.</p>
+        <div className="crops-detail-hero">
+          {imageUrl ? (
+            <img src={imageUrl} alt={record.farm} className="crops-detail-image" />
           ) : (
-            <div className="crops-harvest-value">
-              <strong>{record.harvestQuantity.toLocaleString()} {record.harvestUnit}</strong>
-              <span className={`crop-source crop-source--${record.quantitySource.toLowerCase().replaceAll('-', '')}`}>
-                {record.quantitySource}
-              </span>
-              <small>Reported {formatDate(record.harvestDate)}</small>
+            <div className="crops-detail-image crops-detail-image--empty" aria-hidden="true">
+              <Sprout size={34} />
             </div>
           )}
-          <p className="crops-detail-warning">Values are sample records; reported or estimated quantities are not verified harvest totals.</p>
-        </section>
-        <section className="crops-related-reports">
-          <h3>Related farmer reports <span>{record.relatedReports.length}</span></h3>
-          {record.relatedReports.length ? (
-            <ul>{record.relatedReports.map((id) => <li key={id}><FileText size={14} /><a href="#reports">{id} · Open Reports</a></li>)}</ul>
-          ) : <p>No related sample reports.</p>}
-        </section>
+        </div>
+
+        <header className="crops-modal-header crops-modal-header--over-hero">
+          <div>
+            <p className="crops-eyebrow">
+              {record.farmerId.slice(0, 8).toUpperCase()}
+            </p>
+            <h2 id="crop-detail-title">
+              {record.crop}{record.variety ? ` · ${record.variety}` : ''}
+            </h2>
+            <p>{record.farm}{record.barangay ? ` · ${record.barangay}` : ''}</p>
+          </div>
+          <button
+            aria-label="Close details"
+            className="crops-icon-button"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={19} />
+          </button>
+        </header>
+
+        <div className="crops-detail-status-row">
+          <span className={`crop-status crop-status--${statusClass(record.status)}`}>
+            {record.status}
+          </span>
+        </div>
+
+        <div className="crops-detail-grid">
+          <div>
+            <span>Farmer</span>
+            <strong>{record.farmerName}</strong>
+            <a href="#farmers">Open farmer directory ↗</a>
+          </div>
+          <div>
+            <span>Farm</span>
+            <strong>{record.farm}</strong>
+            <small>{record.farmerId.slice(0, 8).toUpperCase()}</small>
+          </div>
+          {record.barangay && (
+            <div>
+              <span>Barangay</span>
+              <strong>{record.barangay}</strong>
+            </div>
+          )}
+          <div>
+            <span>Planted area</span>
+            <strong>{record.area.toFixed(2)} ha</strong>
+          </div>
+          <div>
+            <span>Planting date</span>
+            <strong>{formatDate(record.plantingDate)}</strong>
+          </div>
+          <div>
+            <span>Expected harvest</span>
+            <strong>{formatDate(record.expectedHarvest)}</strong>
+          </div>
+        </div>
+
         <footer className="crops-modal-actions">
-          <button className="crops-button crops-button--secondary" onClick={onClose} type="button">Close</button>
-          <button className="crops-button crops-button--primary" onClick={onEdit} type="button"><Pencil size={15} /> Update record</button>
+          <button
+            className="crops-button crops-button--secondary"
+            onClick={onClose}
+            type="button"
+          >
+            Close
+          </button>
+          <button
+            className="crops-button crops-button--primary"
+            onClick={onEdit}
+            type="button"
+          >
+            <Pencil size={15} /> Update record
+          </button>
         </footer>
       </section>
     </div>
   );
 }
 
+// ---------- main ----------
+
 const CropProduction = () => {
-  const [records, setRecords] = useState(initialRecords);
+  const [records, setRecords] = useState<CropRecord[]>([]);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
   const [cropFilter, setCropFilter] = useState(allFilter);
-  const [seasonFilter, setSeasonFilter] = useState(allFilter);
   const [barangayFilter, setBarangayFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
+
   const [selectedRecord, setSelectedRecord] = useState<CropRecord | null>(null);
   const [editingRecord, setEditingRecord] = useState<CropRecord | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const [farmsRes, farmersRes] = await Promise.all([
+      supabase
+        .from('farms')
+        .select(
+          'id, farmer_id, name, crop, variety, area_hectares, location, status, planted_date, expected_harvest, image_url',
+        )
+        .order('created_at', { ascending: false }),
+
+      supabase
+        .from('farmers')
+        .select('id, full_name, address')
+        .eq('role', 'farmer'),
+    ]);
+
+    const firstError = farmsRes.error || farmersRes.error;
+    if (firstError) {
+      setError(firstError.message);
+      setRecords([]);
+      setImageUrls({});
+      setLoading(false);
+      return;
+    }
+
+    const farmerById = new Map<string, FarmerRow>();
+    for (const f of (farmersRes.data ?? []) as FarmerRow[]) {
+      farmerById.set(f.id, f);
+    }
+
+    const farmRows = (farmsRes.data ?? []) as FarmRow[];
+
+    const mapped: CropRecord[] = farmRows.map((row) => {
+      const farmer = farmerById.get(row.farmer_id);
+      return {
+        id: row.id,
+        farmerId: row.farmer_id,
+        farmerName: farmer?.full_name ?? 'Unknown farmer',
+        farm: row.name,
+        barangay: row.location ?? farmer?.address ?? '',
+        crop: row.crop ?? 'Unknown',
+        variety: row.variety ?? '',
+        area: Number(row.area_hectares ?? 0),
+        plantingDate: row.planted_date ?? '',
+        expectedHarvest: row.expected_harvest ?? '',
+        status: toUiStatus(row.status),
+        imagePath: row.image_url,
+      };
+    });
+
+    setRecords(mapped);
+
+    // Sign only the storage paths. data: URIs and http(s) URLs pass through.
+    const signed = await signFarmImageUrls(
+      farmRows.map((r) => r.image_url ?? ''),
+    );
+    setImageUrls(signed);
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const crops = useMemo(
+    () => [...new Set(records.map((r) => r.crop).filter(Boolean))].sort(),
+    [records],
+  );
+
+  const barangays = useMemo(
+    () => [...new Set(records.map((r) => r.barangay).filter(Boolean))].sort(),
+    [records],
+  );
 
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
     return records.filter((record) => {
-      const matchesSearch = !query || [
-        record.farmerId,
-        record.farmerName,
-        record.farm,
-        record.id,
-        record.crop,
-        record.barangay,
-      ].some((value) => value.toLowerCase().includes(query));
+      const matchesSearch =
+        !query ||
+        [
+          record.farmerId,
+          record.farmerName,
+          record.farm,
+          record.id,
+          record.crop,
+          record.barangay,
+        ].some((value) => (value ?? '').toLowerCase().includes(query));
+
       return (
         matchesSearch &&
         (cropFilter === allFilter || record.crop === cropFilter) &&
-        (seasonFilter === allFilter || record.season === seasonFilter) &&
         (barangayFilter === allFilter || record.barangay === barangayFilter) &&
         (statusFilter === allFilter || record.status === statusFilter)
       );
     });
-  }, [barangayFilter, cropFilter, records, search, seasonFilter, statusFilter]);
+  }, [barangayFilter, cropFilter, records, search, statusFilter]);
 
-  const totalArea = filteredRecords.reduce((total, record) => total + record.area, 0);
-  const growingCount = filteredRecords.filter((record) => record.status === 'Growing').length;
-  const readyCount = filteredRecords.filter((record) => record.status === 'Ready to Harvest').length;
-  const updateRecord = (updated: CropRecord) => {
-    setRecords((current) => current.map((record) => record.id === updated.id ? updated : record));
+  const totalArea = filteredRecords.reduce((total, r) => total + r.area, 0);
+  const growingCount = filteredRecords.filter((r) => r.status === 'Growing').length;
+  const readyCount = filteredRecords.filter((r) => r.status === 'Ready to Harvest').length;
+
+  const updateRecord = async (
+    id: string,
+    patch: {
+      status: string;
+      crop: string;
+      variety: string;
+      area_hectares: number;
+      planted_date: string | null;
+      expected_harvest: string | null;
+    },
+  ) => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+
+    const { error: dbError } = await supabase
+      .from('farms')
+      .update({
+        status: patch.status,
+        crop: patch.crop,
+        variety: patch.variety || null,
+        area_hectares: patch.area_hectares,
+        planted_date: patch.planted_date,
+        expected_harvest: patch.expected_harvest,
+      })
+      .eq('id', id);
+
+    setSaving(false);
+
+    if (dbError) {
+      setError(dbError.message);
+      return;
+    }
+
     setEditingRecord(null);
+    setSelectedRecord(null);
+    await load();
   };
 
   return (
@@ -362,38 +565,137 @@ const CropProduction = () => {
         <div>
           <p className="crops-eyebrow">FARM &amp; CROP RECORDS</p>
           <h1>Crops &amp; Production</h1>
-          <p className="crops-page-description">Track crop progress and keep harvest records linked to farmers and farms.</p>
+          <p className="crops-page-description">
+            Track crop progress and keep harvest records linked to farmers and farms.
+          </p>
         </div>
-        <div aria-hidden="true" className="crops-page-icon"><Sprout size={22} /></div>
+        <div aria-hidden="true" className="crops-page-icon">
+          <Sprout size={22} />
+        </div>
       </header>
 
-      <div className="crops-demo-notice">
-        <ClipboardList size={17} />
-        <p><strong>Sample records</strong> — All farmer, farm, crop, area, and harvest values are fictional examples and are not saved to a database.</p>
-      </div>
+      {error && (
+        <p className="admin-error" role="alert">
+          {error}
+        </p>
+      )}
 
-      <section aria-label="Filtered crop record summary" className="crops-summary">
-        <article><span className="crops-summary-icon"><Sprout size={17} /></span><div><span>Crop records</span><strong>{filteredRecords.length}</strong></div></article>
-        <article><span className="crops-summary-icon crops-summary-icon--green"><MapPin size={17} /></span><div><span>Planted area</span><strong>{totalArea.toFixed(1)} ha</strong></div></article>
-        <article><span className="crops-summary-icon crops-summary-icon--blue"><CalendarDays size={17} /></span><div><span>Growing</span><strong>{growingCount}</strong></div></article>
-        <article><span className="crops-summary-icon crops-summary-icon--amber"><ClipboardList size={17} /></span><div><span>Ready to harvest</span><strong>{readyCount}</strong></div></article>
+      <section aria-label="Crop record summary" className="crops-summary">
+        <article>
+          <span className="crops-summary-icon">
+            <Sprout size={17} />
+          </span>
+          <div>
+            <span>Crop records</span>
+            <strong>{loading ? '—' : filteredRecords.length}</strong>
+          </div>
+        </article>
+
+        <article>
+          <span className="crops-summary-icon crops-summary-icon--green">
+            <MapPin size={17} />
+          </span>
+          <div>
+            <span>Planted area</span>
+            <strong>{loading ? '—' : `${totalArea.toFixed(1)} ha`}</strong>
+          </div>
+        </article>
+
+        <article>
+          <span className="crops-summary-icon crops-summary-icon--blue">
+            <CalendarDays size={17} />
+          </span>
+          <div>
+            <span>Growing</span>
+            <strong>{loading ? '—' : growingCount}</strong>
+          </div>
+        </article>
+
+        <article>
+          <span className="crops-summary-icon crops-summary-icon--amber">
+            <ClipboardList size={17} />
+          </span>
+          <div>
+            <span>Ready to harvest</span>
+            <strong>{loading ? '—' : readyCount}</strong>
+          </div>
+        </article>
       </section>
 
       <section aria-label="Crop and production records" className="crops-directory">
         <header className="crops-directory-header">
-          <div><h2>Crop records</h2><p>{filteredRecords.length} matching sample {filteredRecords.length === 1 ? 'record' : 'records'}</p></div>
-          <span className="crops-sample-count"><FileText size={14} /> Sample data</span>
+          <div>
+            <h2>Crop records</h2>
+            <p>
+              {loading
+                ? 'Loading…'
+                : `${filteredRecords.length} matching ${
+                    filteredRecords.length === 1 ? 'record' : 'records'
+                  }`}
+            </p>
+          </div>
         </header>
+
         <div className="crops-filters">
           <label className="crops-search">
             <Search aria-hidden="true" size={16} />
-            <input aria-label="Search crops, farms, farmers, or IDs" onChange={(event) => setSearch(event.target.value)} placeholder="Search crop, farm, farmer..." value={search} />
+            <input
+              aria-label="Search crops, farms, farmers, or IDs"
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search crop, farm, farmer..."
+              value={search}
+            />
           </label>
-          <label className="crops-filter"><span>Crop</span><div><select onChange={(event) => setCropFilter(event.target.value)} value={cropFilter}><option value={allFilter}>All crops</option>{cropOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown size={14} /></div></label>
-          <label className="crops-filter"><span>Season</span><div><select onChange={(event) => setSeasonFilter(event.target.value)} value={seasonFilter}><option value={allFilter}>All seasons</option>{seasonOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown size={14} /></div></label>
-          <label className="crops-filter"><span>Barangay</span><div><select onChange={(event) => setBarangayFilter(event.target.value)} value={barangayFilter}><option value={allFilter}>All barangays</option>{barangayOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown size={14} /></div></label>
-          <label className="crops-filter"><span>Status</span><div><select onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}><option value={allFilter}>All statuses</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown size={14} /></div></label>
+
+          <label className="crops-filter">
+            <span>Crop</span>
+            <div>
+              <select
+                onChange={(event) => setCropFilter(event.target.value)}
+                value={cropFilter}
+              >
+                <option value={allFilter}>All crops</option>
+                {crops.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} />
+            </div>
+          </label>
+
+          <label className="crops-filter">
+            <span>Barangay</span>
+            <div>
+              <select
+                onChange={(event) => setBarangayFilter(event.target.value)}
+                value={barangayFilter}
+              >
+                <option value={allFilter}>All barangays</option>
+                {barangays.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} />
+            </div>
+          </label>
+
+          <label className="crops-filter">
+            <span>Status</span>
+            <div>
+              <select
+                onChange={(event) => setStatusFilter(event.target.value)}
+                value={statusFilter}
+              >
+                <option value={allFilter}>All statuses</option>
+                {statuses.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} />
+            </div>
+          </label>
         </div>
+
         <div className="crops-table-wrap">
           <table className="crops-table">
             <thead>
@@ -404,56 +706,127 @@ const CropProduction = () => {
                 <th scope="col">Area</th>
                 <th scope="col">Planted</th>
                 <th scope="col">Expected harvest</th>
-                <th scope="col">Season</th>
                 <th scope="col">Status</th>
-                <th scope="col">Harvest record</th>
-                <th scope="col"><span className="crops-visually-hidden">Actions</span></th>
+                <th scope="col">
+                  <span className="crops-visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.map((record) => (
-                <tr key={record.id}>
-                  <td><div className="crops-farmer-cell"><strong>{record.farmerName}</strong><span>{record.farm} · {record.farmerId}</span></div></td>
-                  <td>{record.barangay}</td>
-                  <td><div className="crops-crop-cell"><strong>{record.crop}</strong><span>{record.variety}</span></div></td>
-                  <td>{record.area} ha</td>
-                  <td>{formatDate(record.plantingDate)}</td>
-                  <td>{formatDate(record.expectedHarvest)}</td>
-                  <td>{record.season}</td>
-                  <td><span className={`crop-status crop-status--${record.status.toLowerCase().replaceAll(' ', '-')}`}>{record.status}</span></td>
-                  <td>
-                    {record.harvestQuantity === null ? (
-                      <span className="crops-no-harvest">Not recorded</span>
-                    ) : (
-                      <span className="crops-harvest-cell">
-                        <strong>{record.harvestQuantity.toLocaleString()} {record.harvestUnit}</strong>
-                        <span className={`crop-source crop-source--${record.quantitySource.toLowerCase().replaceAll('-', '')}`}>{record.quantitySource}</span>
-                      </span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="crops-row-actions">
-                      <button className="crops-text-button" onClick={() => setSelectedRecord(record)} type="button">View details</button>
-                      <button aria-label={`Update ${record.crop} record for ${record.farmerName}`} className="crops-icon-button crops-edit-button" onClick={() => setEditingRecord(record)} type="button"><Pencil size={14} /></button>
-                    </div>
+              {loading && (
+                <tr>
+                  <td className="crops-empty" colSpan={8}>
+                    Loading crop records…
                   </td>
                 </tr>
-              ))}
-              {filteredRecords.length === 0 && <tr><td className="crops-empty" colSpan={10}>No crop records match these search and filter criteria.</td></tr>}
+              )}
+
+              {!loading && filteredRecords.length === 0 && (
+                <tr>
+                  <td className="crops-empty" colSpan={8}>
+                    {records.length === 0
+                      ? 'No crop records yet.'
+                      : 'No crop records match these search and filter criteria.'}
+                  </td>
+                </tr>
+              )}
+
+              {!loading &&
+                filteredRecords.map((record) => {
+                  const img = resolveImageUrl(record.imagePath, imageUrls);
+                  return (
+                    <tr key={record.id}>
+                      <td>
+                        <div className="crops-farm-cell">
+                          {img ? (
+                            <img
+                              src={img}
+                              alt={record.farm}
+                              className="crops-farm-thumb"
+                            />
+                          ) : (
+                            <div className="crops-farm-thumb crops-farm-thumb--empty">
+                              {initialFromName(record.farm)}
+                            </div>
+                          )}
+                          <div className="crops-farmer-cell">
+                            <strong>{record.farmerName}</strong>
+                            <span>
+                              {record.farm} · {record.farmerId.slice(0, 8).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{record.barangay || 'Not recorded'}</td>
+                      <td>
+                        <div className="crops-crop-cell">
+                          <strong>{record.crop}</strong>
+                          <span>{record.variety || '—'}</span>
+                        </div>
+                      </td>
+                      <td>{record.area.toFixed(2)} ha</td>
+                      <td>{formatDate(record.plantingDate)}</td>
+                      <td>{formatDate(record.expectedHarvest)}</td>
+                      <td>
+                        <span className={`crop-status crop-status--${statusClass(record.status)}`}>
+                          {record.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="crops-row-actions">
+                          <button
+                            className="crops-text-button"
+                            onClick={() => setSelectedRecord(record)}
+                            type="button"
+                          >
+                            View details
+                          </button>
+                          <button
+                            aria-label={`Update ${record.crop} record for ${record.farmerName}`}
+                            className="crops-icon-button crops-edit-button"
+                            onClick={() => setEditingRecord(record)}
+                            type="button"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
-        <p className="crops-record-note">Only farmer-reported, estimated, and verified quantities are shown with their source. Blank harvest records mean no quantity has been recorded.</p>
+
+        <p className="crops-record-note">
+          <FileText size={13} /> Every row comes from a farm record created by a
+          farmer. Only the admin can update the crop details.
+        </p>
       </section>
 
       {selectedRecord && (
         <CropDetails
-          onClose={() => setSelectedRecord(null)}
-          onEdit={() => { setEditingRecord(selectedRecord); setSelectedRecord(null); }}
           record={selectedRecord}
+          imageUrl={resolveImageUrl(selectedRecord.imagePath, imageUrls)}
+          onClose={() => setSelectedRecord(null)}
+          onEdit={() => {
+            setEditingRecord(selectedRecord);
+            setSelectedRecord(null);
+          }}
         />
       )}
-      {editingRecord && <CropRecordForm onClose={() => setEditingRecord(null)} onSave={updateRecord} record={editingRecord} />}
+
+      {editingRecord && (
+        <CropRecordForm
+          record={editingRecord}
+          saving={saving}
+          onClose={() => {
+            if (saving) return;
+            setEditingRecord(null);
+          }}
+          onSave={updateRecord}
+        />
+      )}
     </main>
   );
 };

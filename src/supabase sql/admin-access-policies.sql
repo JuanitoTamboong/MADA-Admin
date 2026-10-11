@@ -1,8 +1,10 @@
 -- =========================================================
 -- 009 — Admin access policies
--- Grants admins read access to every farmer-owned table,
--- update on pest_reports, and read on both storage buckets
--- (pest-reports + profile-avatars).
+-- Grants admins:
+--   • read access to every farmer-owned table
+--   • update on pest_reports (status + notes)
+--   • update on farms (crop / variety / dates / status)
+--   • read access to both storage buckets
 -- Requires 008 to have run first.
 -- Safe to re-run.
 -- =========================================================
@@ -39,13 +41,22 @@ create policy "Admins read all farmers"
   to authenticated
   using (public.is_admin());
 
--- farms
+-- farms (read)
 drop policy if exists "Admins read all farms" on public.farms;
 create policy "Admins read all farms"
   on public.farms
   for select
   to authenticated
   using (public.is_admin());
+
+-- farms (update — needed by the Crop Production page)
+drop policy if exists "Admins update farms" on public.farms;
+create policy "Admins update farms"
+  on public.farms
+  for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- tasks
 drop policy if exists "Admins read all tasks" on public.tasks;

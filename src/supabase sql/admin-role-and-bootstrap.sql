@@ -1,18 +1,31 @@
 -- =========================================================
 -- 008 — Admin role + bootstrap
--- Ensures the farmers.role column is valid and the
--- madaadmin@gmail.com account has an admin row.
--- Safe to re-run.
+-- Ensures:
+--   • the farmers table exists with a valid `role` column
+--   • the madaadmin@gmail.com account has an admin row
+-- Safe to re-run on any project state.
 -- =========================================================
 
 -- ---------------------------------------------------------
--- 1. role column
+-- 0. Ensure farmers table exists (in case 001 wasn't run)
+-- ---------------------------------------------------------
+create table if not exists public.farmers (
+  id uuid primary key references auth.users (id) on delete cascade,
+  full_name text not null check (btrim(full_name) <> ''),
+  email text not null,
+  address text not null check (btrim(address) <> ''),
+  role text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------
+-- 1. role column — safe order for both empty and populated tables
 -- ---------------------------------------------------------
 alter table public.farmers
   add column if not exists role text;
 
--- Backfill anything missing (existing installs where the column
--- was added without a default)
+-- Backfill NULL and empty-string values, THEN enforce NOT NULL
 update public.farmers
    set role = 'farmer'
  where role is null or btrim(role) = '';
@@ -41,7 +54,7 @@ select
   u.id,
   'MADA Admin',
   u.email,
-  'Odiongan, Romblon',
+  'Odiongan, Romlom',
   'admin'
 from auth.users u
 where u.email = 'madaadmin@gmail.com'

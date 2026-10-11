@@ -1,3 +1,7 @@
+/* =========================================================
+   CropProduction.css
+   ========================================================= */
+
 .crops-page {
   min-height: calc(100vh - 56px);
   padding: 26px 28px 36px;
@@ -51,28 +55,7 @@
   height: 44px;
 }
 
-.crops-demo-notice {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 11px 13px;
-  border: 1px solid #eadfb8;
-  border-radius: 8px;
-  background: #fffaf0;
-  color: #786638;
-  font-size: 0.66rem;
-}
-
-.crops-demo-notice svg {
-  flex: 0 0 auto;
-  color: #ad8730;
-}
-
-.crops-demo-notice strong {
-  color: #72561b;
-}
-
+/* Summary cards */
 .crops-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -129,6 +112,7 @@
   line-height: 1.15;
 }
 
+/* Directory card */
 .crops-directory {
   overflow: hidden;
   border: 1px solid #e7eeea;
@@ -158,21 +142,10 @@
   font-size: 0.6rem;
 }
 
-.crops-sample-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #89958d;
-  font-size: 0.54rem;
-}
-
-.crops-sample-count svg {
-  color: #879b8c;
-}
-
+/* Filters */
 .crops-filters {
   display: grid;
-  grid-template-columns: minmax(190px, 1.4fr) repeat(4, minmax(125px, 1fr));
+  grid-template-columns: minmax(190px, 1.4fr) repeat(3, minmax(125px, 1fr));
   align-items: end;
   gap: 8px;
   padding: 0 18px 14px;
@@ -251,6 +224,7 @@
   pointer-events: none;
 }
 
+/* Table */
 .crops-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -286,31 +260,61 @@
   font-size: 0.52rem;
 }
 
+/* Cell layout: farm thumbnail + farmer/farm text */
+.crops-farm-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.crops-farm-thumb {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: #e2e8f0;
+}
+
+.crops-farm-thumb--empty {
+  display: grid;
+  place-items: center;
+  background: #eaf4ed;
+  color: #34704d;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
 .crops-farmer-cell,
-.crops-crop-cell,
-.crops-harvest-cell {
+.crops-crop-cell {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .crops-farmer-cell strong,
-.crops-crop-cell strong,
-.crops-harvest-cell strong {
+.crops-crop-cell strong {
   color: #3c4e43;
   font-size: 0.54rem;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .crops-farmer-cell span,
-.crops-crop-cell span,
-.crops-harvest-cell span {
+.crops-crop-cell span {
   color: #89958d;
   font-size: 0.48rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.crop-status,
-.crop-source {
+/* Status pills */
+.crop-status {
   display: inline-flex;
   width: fit-content;
   min-height: 19px;
@@ -319,6 +323,7 @@
   border-radius: 999px;
   font-size: 0.46rem;
   font-weight: 700;
+  text-transform: capitalize;
 }
 
 .crop-status--growing {
@@ -336,32 +341,12 @@
   color: #247447;
 }
 
-.crops-harvest-cell .crop-source {
-  min-height: 16px;
-  padding: 1px 5px;
-  font-size: 0.43rem;
+.crop-status--fallow {
+  background: #f0f2f1;
+  color: #6c7870;
 }
 
-.crop-source--farmerreported {
-  background: #edf4fb;
-  color: #477499;
-}
-
-.crop-source--estimated {
-  background: #fff5df;
-  color: #986a19;
-}
-
-.crop-source--verified {
-  background: #eaf6ee;
-  color: #247447;
-}
-
-.crops-no-harvest {
-  color: #8b968f;
-  font-size: 0.5rem;
-}
-
+/* Row actions */
 .crops-row-actions {
   display: flex;
   align-items: center;
@@ -403,6 +388,11 @@
   color: #1a7040;
 }
 
+.crops-icon-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .crops-edit-button {
   width: 27px;
   height: 27px;
@@ -425,11 +415,32 @@
 }
 
 .crops-record-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 9px 16px 11px;
   color: #89958d;
   font-size: 0.51rem;
 }
 
+.crops-record-note svg {
+  flex: 0 0 auto;
+  color: #87a08d;
+}
+
+/* Error banner */
+.admin-error {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  color: #b42318;
+  background: #fff3f1;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
+/* Modals */
 .crops-modal-backdrop {
   position: fixed;
   z-index: 30;
@@ -453,11 +464,41 @@
   box-shadow: 0 18px 55px rgba(15, 38, 24, 0.2);
 }
 
+.crops-detail-modal {
+  width: min(100%, 610px);
+}
+
+/* Hero image inside the detail modal */
+.crops-detail-hero {
+  margin: -21px -21px 16px;
+  overflow: hidden;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.crops-detail-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+  background-color: #eef2ef;
+}
+
+.crops-detail-image--empty {
+  display: grid;
+  place-items: center;
+  color: #8fa091;
+}
+
 .crops-modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+}
+
+.crops-modal-header--over-hero {
+  padding-top: 4px;
 }
 
 .crops-modal-header h2 {
@@ -473,12 +514,7 @@
   font-size: 0.58rem;
 }
 
-.crops-modal-note {
-  margin-top: 12px;
-  color: #78867d;
-  font-size: 0.57rem;
-}
-
+/* Edit form */
 .crops-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -507,81 +543,7 @@
   color: #98a39b;
 }
 
-.crops-optional {
-  color: #929e96;
-  font-size: 0.49rem;
-  font-weight: 500;
-}
-
-.crops-form-divider {
-  grid-column: 1 / -1;
-  margin-top: 3px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid #edf1ee;
-  color: #42564a;
-  font-size: 0.63rem;
-  font-weight: 750;
-}
-
-.crops-source-guidance {
-  grid-column: 1 / -1;
-  padding: 9px 10px;
-  border: 1px solid #e8e3c9;
-  border-radius: 6px;
-  background: #fffdf5;
-  color: #766b45;
-  font-size: 0.54rem;
-}
-
-.crops-source-guidance strong {
-  color: #665526;
-}
-
-.crops-modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.crops-button {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  font: inherit;
-  font-size: 0.57rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.crops-button--primary {
-  background: #167342;
-  color: #fff;
-}
-
-.crops-button--primary:hover {
-  background: #105b34;
-}
-
-.crops-button--secondary {
-  border-color: #dce6df;
-  background: #fff;
-  color: #435349;
-}
-
-.crops-button--secondary:hover {
-  background: #f5f8f6;
-}
-
-.crops-detail-modal {
-  width: min(100%, 610px);
-}
-
+/* Detail grid */
 .crops-detail-status-row {
   display: flex;
   align-items: center;
@@ -625,86 +587,69 @@
   font-size: 0.5rem;
 }
 
-.crops-detail-grid a,
-.crops-related-reports a {
+.crops-detail-grid a {
   color: #28764a;
   font-size: 0.5rem;
   text-decoration: none;
 }
 
-.crops-detail-grid a:hover,
-.crops-related-reports a:hover {
+.crops-detail-grid a:hover {
   text-decoration: underline;
 }
 
-.crops-detail-harvest,
-.crops-related-reports {
-  margin-top: 15px;
-}
-
-.crops-detail-harvest h3,
-.crops-related-reports h3 {
-  margin: 0 0 8px;
-  color: #34473b;
-  font-size: 0.67rem;
-  font-weight: 750;
-}
-
-.crops-detail-harvest > p,
-.crops-related-reports > p {
-  color: #849088;
-  font-size: 0.56rem;
-}
-
-.crops-harvest-value {
+/* Modal actions */
+.crops-modal-actions {
   display: flex;
-  align-items: center;
-  gap: 9px;
-}
-
-.crops-harvest-value > strong {
-  color: #304738;
-  font-size: 0.8rem;
-}
-
-.crops-harvest-value > small {
-  color: #87938b;
-  font-size: 0.5rem;
-}
-
-.crops-detail-warning {
-  margin-top: 6px;
-  color: #94702c !important;
-}
-
-.crops-related-reports h3 span {
-  margin-left: 4px;
-  color: #8a978e;
-  font-size: 0.54rem;
-}
-
-.crops-related-reports ul {
-  display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  margin-top: 16px;
 }
 
-.crops-related-reports li {
+.crops-button {
   display: inline-flex;
+  min-height: 34px;
   align-items: center;
-  gap: 5px;
-  padding: 6px 8px;
-  border: 1px solid #e7eeea;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid transparent;
   border-radius: 6px;
+  font: inherit;
+  font-size: 0.57rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.crops-related-reports li svg {
-  color: #648572;
+.crops-button--primary {
+  background: #167342;
+  color: #fff;
 }
 
+.crops-button--primary:hover {
+  background: #105b34;
+}
+
+.crops-button--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crops-button--secondary {
+  border-color: #dce6df;
+  background: #fff;
+  color: #435349;
+}
+
+.crops-button--secondary:hover {
+  background: #f5f8f6;
+}
+
+.crops-button--secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
 @media (max-width: 1200px) {
   .crops-page {
     padding: 22px 18px 30px;
@@ -773,6 +718,10 @@
   .crops-modal {
     max-height: calc(100vh - 20px);
     padding: 15px;
+  }
+
+  .crops-detail-hero {
+    margin: -15px -15px 14px;
   }
 
   .crops-detail-grid {
