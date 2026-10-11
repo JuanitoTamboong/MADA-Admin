@@ -1,3 +1,7 @@
+/* =========================================================
+   AdminAnalytics.css
+   ========================================================= */
+
 .analytics-page {
   display: grid;
   gap: 16px;
@@ -128,10 +132,12 @@
   padding: 0 10px;
   border: 1px solid #e1e8e2;
   border-radius: 8px;
-  background: #fff;
+  background-color: #ffffff;
   color: #344238;
   font: inherit;
   font-size: 0.68rem;
+  color-scheme: light;
+  box-sizing: border-box;
 }
 
 .analytics-filters select:disabled {
@@ -219,6 +225,44 @@
   line-height: 1.4;
 }
 
+/* ---------------- QUICK INSIGHTS ---------------- */
+.analytics-insights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analytics-insight {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid #e7eeea;
+  border-radius: 9px;
+  background: #fbfdfb;
+}
+
+.analytics-insight > span {
+  color: #758178;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.analytics-insight > strong {
+  overflow: hidden;
+  color: #2a4031;
+  font-size: 0.85rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-insight > small {
+  color: #8a958e;
+  font-size: 0.55rem;
+}
+
 /* ---------------- CARDS ---------------- */
 .analytics-card {
   min-width: 0;
@@ -234,6 +278,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 12px;
 }
 
 .analytics-card-heading h2 {
@@ -258,6 +303,7 @@
   color: #6d7b6e;
   font-size: 0.55rem;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .analytics-chart-grid {
@@ -278,6 +324,215 @@
   background: #fcfdfc;
 }
 
+/* ---------------- BAR LISTS ---------------- */
+.analytics-bar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.analytics-bar-list li {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.1fr) minmax(60px, 3fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.62rem;
+  color: #3b4d42;
+}
+
+.analytics-bar-label {
+  overflow: hidden;
+  color: #3b4d42;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-bar-track {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: #eaf1ed;
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  display: block;
+  height: 100%;
+  background: #16834d;
+  border-radius: inherit;
+  transition: width 0.3s ease;
+}
+
+.analytics-bar-fill--amber {
+  background: #f4ad35;
+}
+
+.analytics-bar-fill--blue {
+  background: #368bd6;
+}
+
+.analytics-bar-list b {
+  min-width: 34px;
+  color: #0d2818;
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------------- LINE CHART ---------------- */
+.analytics-line-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analytics-line-svg {
+  width: 100%;
+  height: 150px;
+  overflow: visible;
+}
+
+.analytics-line-grid path {
+  fill: none;
+  stroke: #eef2ef;
+  stroke-width: 1;
+}
+
+.analytics-line-grid text {
+  fill: #8a958e;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.analytics-line-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 26px;
+  color: #5c6e58;
+  font-size: 0.56rem;
+  font-weight: 600;
+}
+
+/* ---------------- DONUT CHART ---------------- */
+.analytics-donut-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.analytics-donut-ring {
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eef2ef;
+  display: grid;
+  place-items: center;
+}
+
+.analytics-donut-center {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.analytics-donut-center strong {
+  color: #0d2818;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.analytics-donut-center span {
+  color: #8a958e;
+  font-size: 0.5rem;
+  font-weight: 600;
+}
+
+.analytics-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.analytics-donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.63rem;
+  color: #3b4d42;
+}
+
+.analytics-donut-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.analytics-donut-legend b {
+  margin-left: auto;
+  color: #0d2818;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- PILL LIST (crop mix) ---------------- */
+.analytics-pill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.analytics-pill-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.62rem;
+}
+
+.analytics-pill {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eaf4ed;
+  color: #34704d;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.analytics-pill-count {
+  margin-left: auto;
+  color: #3b4d42;
+}
+
+.analytics-pill-count em {
+  color: #8a958e;
+  font-style: normal;
+  font-weight: 500;
+}
+
 /* ---------------- FOOTER ---------------- */
 .analytics-data-note {
   display: grid;
@@ -288,10 +543,33 @@
   line-height: 1.5;
 }
 
+/* ---------------- ERROR BANNER ---------------- */
+.admin-error {
+  margin: 0;
+  padding: 10px 14px;
+  color: #b42318;
+  background: #fff3f1;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
 /* ---------------- RESPONSIVE ---------------- */
 @media (max-width: 900px) {
-  .analytics-page { padding: 20px; }
-  .analytics-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-page {
+    padding: 20px;
+  }
+
+  .analytics-metrics,
+  .analytics-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-bar-list li {
+    grid-template-columns: minmax(80px, 1.2fr) minmax(40px, 3fr) auto;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 680px) {
@@ -310,7 +588,46 @@
     flex-basis: calc(50% - 5px);
   }
 
-  .analytics-reset { width: 100%; justify-content: center; }
+  .analytics-reset {
+    width: 100%;
+    justify-content: center;
+  }
 
-  .analytics-chart-grid { grid-template-columns: 1fr; }
+  .analytics-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-insights {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-donut-wrapper {
+    justify-content: center;
+  }
+
+  .analytics-line-svg {
+    height: 130px;
+  }
+}
+
+@media (max-width: 420px) {
+  .analytics-bar-list li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'label value'
+      'track track';
+    gap: 4px 8px;
+  }
+
+  .analytics-bar-list li .analytics-bar-label {
+    grid-area: label;
+  }
+
+  .analytics-bar-list li b {
+    grid-area: value;
+  }
+
+  .analytics-bar-list li .analytics-bar-track {
+    grid-area: track;
+  }
 }
