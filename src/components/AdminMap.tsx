@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ChevronDown,
@@ -21,6 +21,8 @@ interface MappedFarmer {
   farmCount: number;
   status: FarmerStatus;
   avatarPath: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface FarmerRow {
@@ -39,10 +41,9 @@ interface FarmRow {
 const statuses: FarmerStatus[] = ['Active', 'Inactive'];
 const allFilter = 'All';
 
-const mapEmbedUrl =
-  'https://www.openstreetmap.org/export/embed.html?bbox=116.5%2C4.5%2C127.5%2C21.5&layer=mapnik';
-
-function toUiStatus(raw: 'active' | 'inactive' | null | undefined): FarmerStatus {
+function toUiStatus(
+  raw: 'active' | 'inactive' | null | undefined,
+): FarmerStatus {
   return raw === 'inactive' ? 'Inactive' : 'Active';
 }
 
@@ -50,7 +51,6 @@ function statusClass(ui: FarmerStatus): string {
   return ui.toLowerCase();
 }
 
-// Batch-sign avatar paths in one round-trip. Returns { path -> url }.
 async function signAvatarUrls(
   paths: string[],
 ): Promise<Record<string, string>> {
@@ -70,10 +70,45 @@ async function signAvatarUrls(
   return map;
 }
 
+function simplifyAddress(address: string): string {
+  const parts = address
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const candidate = parts[parts.length - 1] ?? address;
+
+  return candidate
+    .replace(/^(barangay|brgy\.?|brgy|purok|sitio)\s+/i, '')
+    .trim();
+}
+
+async function geocodeAddress(
+  address: string,
+): Promise<{ latitude: number; longitude: number } | null> {
+  const q = simplifyAddress(address) || address;
+  if (!q) return null;
+
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+        q,
+      )}&count=1&language=en&format=json`,
+    );
+    const json = await res.json();
+    const place = json?.results?.[0];
+    if (!place) return null;
+    return { latitude: place.latitude, longitude: place.longitude };
+  } catch {
+    return null;
+  }
+}
+
 const AdminMap = () => {
   const [farmers, setFarmers] = useState<MappedFarmer[]>([]);
   const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
@@ -81,6 +116,10 @@ const AdminMap = () => {
   const [cropFilter, setCropFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
   const [selectedFarmerId, setSelectedFarmerId] = useState<string | null>(null);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const groupRef = useRef<any>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,7 +144,6 @@ const AdminMap = () => {
       return;
     }
 
-    // Aggregate farms per farmer: count + main crop (first non-null)
     const farmCountById = new Map<string, number>();
     const mainCropById = new Map<string, string>();
 
@@ -129,17 +167,55 @@ const AdminMap = () => {
       farmCount: farmCountById.get(row.id) ?? 0,
       status: toUiStatus(row.status),
       avatarPath: row.avatar_path,
+      latitude: null,
+      longitude: null,
     }));
 
     setFarmers(mapped);
 
-    // Sign all avatars in a single request
     const signed = await signAvatarUrls(
       rows.map((r) => r.avatar_path ?? '').filter(Boolean),
     );
     setAvatarUrls(signed);
 
     setLoading(false);
+
+    // Geocode every unique address — even the ones with empty addresses
+    // are skipped cleanly. Any farmer whose address resolves gets a pin.
+    setGeocoding(true);
+    try {
+      const uniqueAddresses = Array.from(
+        new Set(mapped.map((f) => f.barangay).filter(Boolean)),
+      );
+
+      const resolved = await Promise.all(
+        uniqueAddresses.map(async (address) => ({
+          address,
+          coords: await geocodeAddress(address),
+        })),
+      );
+
+      const byAddress = new Map(
+        resolved
+          .filter((r) => r.coords !== null)
+          .map((r) => [r.address, r.coords!] as const),
+      );
+
+      setFarmers((current) =>
+        current.map((f) => {
+          const coords = byAddress.get(f.barangay);
+          return coords
+            ? {
+                ...f,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }
+            : f;
+        }),
+      );
+    } finally {
+      setGeocoding(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -183,11 +259,16 @@ const AdminMap = () => {
   const farmerCountByBarangay = useMemo(() => {
     const counts = new Map<string, number>();
     filteredFarmers.forEach((farmer) => {
-      const key = farmer.barangay || 'Not recorded';
+      const key = farmer.barangay || 'Address not recorded';
       counts.set(key, (counts.get(key) ?? 0) + 1);
     });
     return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [filteredFarmers]);
+
+  const locatedCount = filteredFarmers.filter(
+    (f) => f.latitude !== null && f.longitude !== null,
+  ).length;
+  const unlocatedCount = filteredFarmers.length - locatedCount;
 
   const clearFilters = () => {
     setSearch('');
@@ -197,6 +278,135 @@ const AdminMap = () => {
     setSelectedFarmerId(null);
   };
 
+  // ---- Leaflet: create map once ----
+  useEffect(() => {
+    const L = (window as any).L;
+    if (!L || !mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [12.8797, 121.774],
+      zoom: 5,
+      scrollWheelZoom: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // ---- Leaflet: update markers whenever the filtered set changes ----
+  useEffect(() => {
+    const L = (window as any).L;
+    const map = mapRef.current;
+    if (!L || !map) return;
+
+    if (groupRef.current) {
+      map.removeLayer(groupRef.current);
+      groupRef.current = null;
+    }
+
+    const withCoords = filteredFarmers.filter(
+      (f) => f.latitude !== null && f.longitude !== null,
+    );
+
+    if (withCoords.length === 0) return;
+
+    const group = L.featureGroup();
+
+    // Fan out markers that share the same coordinate so they don't stack.
+    const coordKey = (f: MappedFarmer) =>
+      `${f.latitude!.toFixed(4)},${f.longitude!.toFixed(4)}`;
+    const coordBuckets = new Map<string, MappedFarmer[]>();
+    withCoords.forEach((f) => {
+      const key = coordKey(f);
+      const list = coordBuckets.get(key) ?? [];
+      list.push(f);
+      coordBuckets.set(key, list);
+    });
+
+    withCoords.forEach((farmer) => {
+      const avatar = farmer.avatarPath
+        ? avatarUrls[farmer.avatarPath]
+        : null;
+
+      const popupHtml = `
+        <div style="display:flex;gap:8px;align-items:center;min-width:200px">
+          ${
+            avatar
+              ? `<img src="${avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover" />`
+              : `<div style="width:36px;height:36px;border-radius:50%;background:#eaf4ed;color:#34704d;display:grid;place-items:center;font-weight:800">${farmer.name
+                  .slice(0, 1)
+                  .toUpperCase()}</div>`
+          }
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:12px;color:#26392e">${farmer.name}</div>
+            <div style="font-size:11px;color:#849088">${farmer.barangay || 'Address not recorded'}</div>
+            <div style="font-size:10px;color:#a2a89e;margin-top:2px">
+              ${farmer.mainCrop} · ${farmer.farmCount} ${
+                farmer.farmCount === 1 ? 'farm' : 'farms'
+              }
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Custom pin: farmer photo if uploaded and reachable, initials otherwise.
+      const initial = farmer.name.slice(0, 1).toUpperCase();
+
+      const markerIcon = L.divIcon({
+        className: 'farmer-marker',
+        html: avatar
+          ? `<div class="farmer-marker-pin farmer-marker-pin--photo">
+               <img
+                 src="${avatar}"
+                 alt=""
+                 onerror="this.parentNode.classList.remove('farmer-marker-pin--photo'); this.parentNode.textContent='${initial}';"
+               />
+             </div>`
+          : `<div class="farmer-marker-pin">${initial}</div>`,
+        iconSize: [44, 44],
+        iconAnchor: [22, 52],
+        popupAnchor: [0, -48],
+      });
+
+      // Fan out markers that share a coordinate.
+      const bucket = coordBuckets.get(coordKey(farmer)) ?? [];
+      const idxInBucket = bucket.indexOf(farmer);
+      const total = bucket.length;
+      let lat = farmer.latitude as number;
+      let lng = farmer.longitude as number;
+
+      if (total > 1 && idxInBucket >= 0) {
+        const angle = (idxInBucket / total) * Math.PI * 2;
+        const offset = 0.0035; // ~350m, cosmetic fan-out
+        lat += Math.cos(angle) * offset;
+        lng += Math.sin(angle) * offset;
+      }
+
+      L.marker([lat, lng], { icon: markerIcon })
+        .bindPopup(popupHtml)
+        .addTo(group);
+    });
+
+    group.addTo(map);
+    groupRef.current = group;
+
+    try {
+      map.fitBounds(group.getBounds().pad(0.3));
+    } catch {
+      // ignore; map stays at default
+    }
+  }, [filteredFarmers, avatarUrls]);
+
   return (
     <main className="farmers-map-page">
       <header className="farmers-map-page-heading">
@@ -204,8 +414,8 @@ const AdminMap = () => {
           <p className="farmers-map-eyebrow">GEOGRAPHIC DIRECTORY</p>
           <h1>Farmers Map</h1>
           <p className="farmers-map-description">
-            Explore farmer coverage by barangay. Exact coordinates are not
-            collected at registration.
+            Every registered farmer is listed below. Pins are barangay-level
+            approximations from the address on file — not exact farm locations.
           </p>
         </div>
         <span className="farmers-map-title-icon">
@@ -222,9 +432,9 @@ const AdminMap = () => {
       <div className="farmers-map-demo-notice">
         <AlertTriangle size={17} />
         <p>
-          <strong>No coordinates are stored for farmers.</strong> The base map
-          is a country overview only. The farmer list below shows the address
-          each farmer entered at registration.
+          <strong>Approximate locations only.</strong> Pins are placed at the
+          center of the town parsed from each farmer's address. Farmers without
+          an address appear in the sidebar list but have no pin.
         </p>
       </div>
 
@@ -234,7 +444,7 @@ const AdminMap = () => {
             <Users size={17} />
           </span>
           <div>
-            <span>Matching farmers</span>
+            <span>Total farmers</span>
             <strong>{loading ? '—' : filteredFarmers.length}</strong>
           </div>
         </article>
@@ -244,8 +454,8 @@ const AdminMap = () => {
             <MapPin size={17} />
           </span>
           <div>
-            <span>With verified locations</span>
-            <strong>0</strong>
+            <span>Approximate locations</span>
+            <strong>{loading || geocoding ? '…' : locatedCount}</strong>
           </div>
         </article>
 
@@ -254,8 +464,8 @@ const AdminMap = () => {
             <AlertTriangle size={17} />
           </span>
           <div>
-            <span>Location not on record</span>
-            <strong>{loading ? '—' : filteredFarmers.length}</strong>
+            <span>No location on file</span>
+            <strong>{loading || geocoding ? '…' : unlocatedCount}</strong>
           </div>
         </article>
 
@@ -270,7 +480,10 @@ const AdminMap = () => {
         </article>
       </section>
 
-      <section aria-label="Search and filter farmers" className="farmers-map-filters">
+      <section
+        aria-label="Search and filter farmers"
+        className="farmers-map-filters"
+      >
         <label className="farmers-map-search">
           <Search aria-hidden="true" size={16} />
           <input
@@ -296,7 +509,9 @@ const AdminMap = () => {
             >
               <option value={allFilter}>All barangays</option>
               {barangays.map((barangay) => (
-                <option key={barangay} value={barangay}>{barangay}</option>
+                <option key={barangay} value={barangay}>
+                  {barangay}
+                </option>
               ))}
             </select>
             <ChevronDown size={14} />
@@ -315,7 +530,9 @@ const AdminMap = () => {
             >
               <option value={allFilter}>All crops</option>
               {crops.map((crop) => (
-                <option key={crop} value={crop}>{crop}</option>
+                <option key={crop} value={crop}>
+                  {crop}
+                </option>
               ))}
             </select>
             <ChevronDown size={14} />
@@ -334,66 +551,90 @@ const AdminMap = () => {
             >
               <option value={allFilter}>All statuses</option>
               {statuses.map((status) => (
-                <option key={status} value={status}>{status}</option>
+                <option key={status} value={status}>
+                  {status}
+                </option>
               ))}
             </select>
             <ChevronDown size={14} />
           </div>
         </label>
 
-        <button className="farmers-map-clear" onClick={clearFilters} type="button">
+        <button
+          className="farmers-map-clear"
+          onClick={clearFilters}
+          type="button"
+        >
           Clear filters
         </button>
       </section>
 
       <div className="farmers-map-content">
-        <section aria-label="Map showing the Philippines" className="farmers-map-panel">
+        <section aria-label="Map" className="farmers-map-panel">
           <header className="farmers-map-panel-header">
             <div>
               <h2>Map overview</h2>
-              <p>Philippines · map context only</p>
+              <p>
+                {geocoding
+                  ? 'Locating barangays…'
+                  : `${locatedCount} pin${locatedCount === 1 ? '' : 's'} shown${
+                      unlocatedCount > 0
+                        ? ` · ${unlocatedCount} without a pin`
+                        : ''
+                    }`}
+              </p>
             </div>
-            <a href="https://www.openstreetmap.org/" rel="noreferrer" target="_blank">
+            <a
+              href="https://www.openstreetmap.org/"
+              rel="noreferrer"
+              target="_blank"
+            >
               Open map <ExternalLink size={13} />
             </a>
           </header>
 
           <div className="farmers-map-viewport">
-            <iframe
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              src={mapEmbedUrl}
-              title="OpenStreetMap view of the Philippines, with no farmer locations plotted"
+            <div
+              ref={mapContainerRef}
+              style={{ width: '100%', height: '100%' }}
             />
-            <div className="farmers-map-empty-overlay">
-              <span><MapPin size={20} /></span>
-              <strong>No farmer locations to plot</strong>
-              <p>Verified coordinates have not been collected for farmers.</p>
-            </div>
+            {!geocoding && locatedCount === 0 && !loading && (
+              <div className="farmers-map-empty-overlay">
+                <span>
+                  <MapPin size={20} />
+                </span>
+                <strong>No locations to plot</strong>
+                <p>Addresses could not be geocoded.</p>
+              </div>
+            )}
           </div>
 
           <footer className="farmers-map-attribution">
-            Map data © <a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">OpenStreetMap contributors</a>. Base map only; no farmer locations are displayed.
+            Map data ©{' '}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              rel="noreferrer"
+              target="_blank"
+            >
+              OpenStreetMap contributors
+            </a>
+            . Pins are barangay-level approximations.
           </footer>
         </section>
 
-        <aside
-          aria-label="Farmers without verified coordinates"
-          className="farmers-map-records"
-        >
+        <aside aria-label="All farmers" className="farmers-map-records">
           <header className="farmers-map-records-header">
             <div>
-              <h2>Farmer list</h2>
+              <h2>All farmers</h2>
               <p>
                 {loading
                   ? 'Loading…'
-                  : `${filteredFarmers.length} matching ${
-                      filteredFarmers.length === 1 ? 'record' : 'records'
-                    }`}
+                  : `${filteredFarmers.length} of ${farmers.length} shown`}
               </p>
             </div>
-            <span>{loading ? '—' : `${filteredFarmers.length} no location`}</span>
+            <span>
+              {loading ? '—' : `${unlocatedCount} without a pin`}
+            </span>
           </header>
 
           <div className="farmers-map-barangay-groups">
@@ -415,11 +656,17 @@ const AdminMap = () => {
 
                 <ul>
                   {filteredFarmers
-                    .filter((farmer) => (farmer.barangay || 'Not recorded') === barangay)
+                    .filter(
+                      (farmer) =>
+                        (farmer.barangay || 'Address not recorded') ===
+                        barangay,
+                    )
                     .map((farmer) => {
                       const avatarUrl = farmer.avatarPath
                         ? avatarUrls[farmer.avatarPath]
                         : null;
+                      const located =
+                        farmer.latitude !== null && farmer.longitude !== null;
                       return (
                         <li key={farmer.id}>
                           <button
@@ -431,7 +678,9 @@ const AdminMap = () => {
                             }`}
                             onClick={() =>
                               setSelectedFarmerId(
-                                selectedFarmerId === farmer.id ? null : farmer.id,
+                                selectedFarmerId === farmer.id
+                                  ? null
+                                  : farmer.id,
                               )
                             }
                             type="button"
@@ -441,6 +690,12 @@ const AdminMap = () => {
                                 src={avatarUrl}
                                 alt={farmer.name}
                                 className="farmers-map-record-avatar farmers-map-record-avatar--img"
+                                onError={(e) => {
+                                  // If the image fails, hide it so the initial circle
+                                  // underneath isn't obscured.
+                                  (e.currentTarget as HTMLImageElement).style.display =
+                                    'none';
+                                }}
                               />
                             ) : (
                               <span className="farmers-map-record-avatar">
@@ -451,7 +706,8 @@ const AdminMap = () => {
                             <span className="farmers-map-record-copy">
                               <strong>{farmer.name}</strong>
                               <small>
-                                {farmer.id.slice(0, 8).toUpperCase()} · {farmer.mainCrop} · {farmer.farmCount}{' '}
+                                {farmer.id.slice(0, 8).toUpperCase()} ·{' '}
+                                {farmer.mainCrop} · {farmer.farmCount}{' '}
                                 {farmer.farmCount === 1 ? 'farm' : 'farms'}
                               </small>
                             </span>
@@ -468,7 +724,10 @@ const AdminMap = () => {
                           {selectedFarmerId === farmer.id && (
                             <div className="farmers-map-record-detail">
                               <p>
-                                <MapPin size={13} /> Exact location not on record
+                                <MapPin size={13} />
+                                {located
+                                  ? 'Approximate pin · not exact farm'
+                                  : 'Address could not be geocoded'}
                               </p>
                               <a href="#farmers">
                                 View farmer profile <ExternalLink size={12} />
@@ -484,7 +743,8 @@ const AdminMap = () => {
           </div>
 
           <footer className="farmers-map-list-note">
-            List and barangay counts use the same search and filters as the map.
+            Every registered farmer appears here. Pins are barangay-level
+            approximations.
           </footer>
         </aside>
       </div>

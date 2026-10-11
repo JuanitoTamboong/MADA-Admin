@@ -284,26 +284,21 @@
   text-decoration: underline;
 }
 
-/* Map viewport */
+/* Map viewport — holds the Leaflet container */
 .farmers-map-viewport {
   position: relative;
   height: 440px;
   overflow: hidden;
   border-block: 1px solid #edf1ee;
-  background:
-    linear-gradient(135deg, rgba(236, 244, 238, 0.84), rgba(227, 237, 230, 0.8)),
-    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(107, 143, 118, 0.08) 40px),
-    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(107, 143, 118, 0.08) 40px);
+  background: #eef2ef;
 }
 
-.farmers-map-viewport iframe {
-  display: block;
+.farmers-map-viewport > div {
   width: 100%;
   height: 100%;
-  border: 0;
-  filter: saturate(0.78);
 }
 
+/* Empty state overlay */
 .farmers-map-empty-overlay {
   position: absolute;
   top: 50%;
@@ -320,6 +315,7 @@
   text-align: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  z-index: 500;
 }
 
 .farmers-map-empty-overlay > span {
@@ -452,6 +448,13 @@
   font-weight: 800;
 }
 
+/* Real avatar image in the sidebar */
+.farmers-map-record-avatar--img {
+  object-fit: cover;
+  object-position: center;
+  background-color: #e2e8f0;
+}
+
 .farmers-map-record-copy {
   display: flex;
   min-width: 0;
@@ -476,7 +479,7 @@
   white-space: nowrap;
 }
 
-/* Status pill — only active / inactive now */
+/* Status pill */
 .farmers-map-status {
   flex: 0 0 auto;
   padding: 3px 5px;
@@ -545,7 +548,96 @@
   font-size: 0.47rem;
 }
 
-/* Error banner (rendered on Supabase query failure) */
+/* =========================================================
+   Farmer photo markers (Leaflet)
+   ========================================================= */
+
+/* Reset Leaflet's default white box */
+.farmer-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* The circular pin. NOTE: do NOT use overflow:hidden — it clips the tail. */
+.farmer-marker-pin {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eaf4ed;
+  color: #34704d;
+  font-weight: 800;
+  font-size: 16px;
+  border: 3px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(26, 67, 45, 0.28);
+}
+
+/* Force the photo to cover the circle without distortion.
+   The !important is here because Leaflet's marker CSS and any global
+   `img { max-width: 100% }` reset can override object-fit. */
+.farmer-marker .farmer-marker-pin--photo img,
+.farmer-marker-pin--photo img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  border-radius: 50% !important;
+  display: block !important;
+}
+
+/* The pointed tail under the pin */
+.farmer-marker-pin::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #ffffff;
+  filter: drop-shadow(0 2px 2px rgba(26, 67, 45, 0.15));
+  z-index: 1;
+}
+
+.farmer-marker:hover .farmer-marker-pin {
+  transform: scale(1.06);
+  transition: transform 0.15s ease;
+}
+
+/* Fallback shown if the signed avatar URL fails to load */
+.farmer-marker-initials {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: #34704d;
+  background: #eaf4ed;
+}
+
+/* =========================================================
+   Leaflet popup styling
+   ========================================================= */
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(26, 67, 45, 0.14);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+  font-family: inherit;
+  color: #24352b;
+}
+
+/* Error banner */
 .admin-error {
   margin: 0 0 12px;
   padding: 10px 14px;
@@ -557,7 +649,10 @@
   line-height: 1.4;
 }
 
-/* Responsive */
+/* =========================================================
+   Responsive
+   ========================================================= */
+
 @media (max-width: 1100px) {
   .farmers-map-page {
     padding: 22px 18px 30px;
