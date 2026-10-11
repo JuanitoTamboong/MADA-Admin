@@ -1,23 +1,26 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   Check,
   ChevronDown,
   ClipboardList,
   FileText,
-  List,
-  Map,
+  List as ListIcon,
+  Map as MapIcon,
   MapPin,
   Pencil,
-  Plus,
   Search,
   Users,
   X,
 } from 'lucide-react';
 import '../css/AdminFarmers.css';
+import { supabase } from '../supabase/supabase-client';
 
-type FarmerStatus = 'Active' | 'Pending Verification' | 'Inactive';
+// ---------- types ----------
+
+type FarmerStatus = 'Active' | 'Inactive';
 
 interface FarmerFarm {
+  id: string;
   name: string;
   crop: string;
   area: string;
@@ -34,132 +37,122 @@ interface Farmer {
   id: string;
   name: string;
   barangay: string;
-  phone: string;
   email: string;
   mainCrop: string;
   status: FarmerStatus;
+  avatarPath: string | null;
   farms: FarmerFarm[];
-  assistanceRequests: string[];
   reports: FarmerReport[];
 }
 
-const initialFarmers: Farmer[] = [
-  {
-    id: 'F-0001',
-    name: 'Sample Farmer 001',
-    barangay: 'Sample Barangay A',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: 'Rice',
-    status: 'Active',
-    farms: [{ name: 'Sample Rice Farm', crop: 'Rice', area: '1.5 ha' }],
-    assistanceRequests: ['Seed assistance — Sample record'],
-    reports: [{ id: 'R-0001', type: 'Water shortage', date: '2026-03-14', status: 'Advice Sent' }],
-  },
-  {
-    id: 'F-0002',
-    name: 'Sample Farmer 002',
-    barangay: 'Sample Barangay B',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: 'Coconut',
-    status: 'Pending Verification',
-    farms: [{ name: 'Sample Coconut Farm', crop: 'Coconut', area: '2 ha' }],
-    assistanceRequests: [],
-    reports: [],
-  },
-  {
-    id: 'F-0003',
-    name: 'Sample Farmer 003',
-    barangay: 'Sample Barangay A',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: 'Corn',
-    status: 'Active',
-    farms: [
-      { name: 'Sample Corn Farm', crop: 'Corn', area: '1 ha' },
-      { name: 'Sample Vegetable Farm', crop: 'Vegetables', area: '0.5 ha' },
-    ],
-    assistanceRequests: ['Training support — Sample record'],
-    reports: [{ id: 'R-0002', type: 'Pest symptoms', date: '2026-04-19', status: 'Under Review' }],
-  },
-  {
-    id: 'F-0004',
-    name: 'Sample Farmer 004',
-    barangay: 'Sample Barangay C',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: 'Rice',
-    status: 'Inactive',
-    farms: [{ name: 'Sample Mixed Farm', crop: 'Rice', area: '0.8 ha' }],
-    assistanceRequests: [],
-    reports: [],
-  },
-  {
-    id: 'F-0005',
-    name: 'Sample Farmer 005',
-    barangay: 'Sample Barangay B',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: 'Coconut',
-    status: 'Active',
-    farms: [{ name: 'Sample Coconut Farm', crop: 'Coconut', area: '3 ha' }],
-    assistanceRequests: ['Fertilizer assistance — Sample record'],
-    reports: [{ id: 'R-0003', type: 'Soil erosion', date: '2026-06-01', status: 'Resolved' }],
-  },
-  {
-    id: 'F-0006',
-    name: 'Sample Farmer 006',
-    barangay: 'Sample Barangay C',
-    phone: 'Not provided',
-    email: 'Not provided',
-    mainCrop: '',
-    status: 'Pending Verification',
-    farms: [],
-    assistanceRequests: [],
-    reports: [],
-  },
-];
-
-const statusOptions: FarmerStatus[] = ['Active', 'Pending Verification', 'Inactive'];
-const allFilter = 'All';
-
-interface FarmerFormProps {
-  farmer: Farmer | null;
-  onClose: () => void;
-  onSave: (farmer: Farmer) => void;
+interface FarmerRow {
+  id: string;
+  full_name: string;
+  address: string | null;
+  email: string | null;
+  status: 'active' | 'inactive' | null;
+  avatar_path: string | null;
 }
 
-function FarmerForm({ farmer, onClose, onSave }: FarmerFormProps) {
-  const [name, setName] = useState(farmer?.name ?? '');
-  const [barangay, setBarangay] = useState(farmer?.barangay ?? '');
-  const [phone, setPhone] = useState(
-    farmer?.phone === 'Not provided' ? '' : farmer?.phone ?? '',
+interface FarmRow {
+  id: string;
+  farmer_id: string;
+  name: string;
+  crop: string | null;
+  area_hectares: number;
+}
+
+interface ReportRow {
+  id: string;
+  farmer_id: string;
+  note: string | null;
+  status: 'pending' | 'reviewed' | 'resolved';
+  created_at: string;
+}
+
+// ---------- constants + helpers ----------
+
+const statusOptions: FarmerStatus[] = ['Active', 'Inactive'];
+const allFilter = 'All';
+
+function toUiStatus(
+  raw: 'active' | 'inactive' | null | undefined,
+): FarmerStatus {
+  return raw === 'inactive' ? 'Inactive' : 'Active';
+}
+
+function statusClass(ui: FarmerStatus): string {
+  return ui.toLowerCase();
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function initialFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts[0][0].toUpperCase();
+}
+
+// Batch-sign storage paths for avatars.
+async function signAvatarUrls(paths: string[]): Promise<Record<string, string>> {
+  const uniq = Array.from(new Set(paths.filter(Boolean)));
+  if (uniq.length === 0) return {};
+
+  const { data, error } = await supabase.storage
+    .from('profile-avatars')
+    .createSignedUrls(uniq, 60 * 60);
+
+  if (error || !data) return {};
+
+  const map: Record<string, string> = {};
+  for (const row of data) {
+    if (row.path && row.signedUrl) map[row.path] = row.signedUrl;
+  }
+  return map;
+}
+
+// ---------- edit form ----------
+
+interface FarmerFormProps {
+  farmer: Farmer;
+  saving?: boolean;
+  onClose: () => void;
+  onSave: (
+    id: string,
+    patch: { full_name: string; address: string; status: 'active' | 'inactive' },
+  ) => void;
+}
+
+function FarmerForm({ farmer, saving = false, onClose, onSave }: FarmerFormProps) {
+  const [name, setName] = useState(farmer.name);
+  const [barangay, setBarangay] = useState(farmer.barangay);
+  const [rawStatus, setRawStatus] = useState<'active' | 'inactive'>(
+    farmer.status === 'Inactive' ? 'inactive' : 'active',
   );
-  const [crop, setCrop] = useState(farmer?.mainCrop ?? '');
-  const [status, setStatus] = useState<FarmerStatus>(farmer?.status ?? 'Pending Verification');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSave({
-      id: farmer?.id ?? '',
-      name: name.trim(),
-      barangay: barangay.trim(),
-      phone: phone.trim() || 'Not provided',
-      email: farmer?.email ?? 'Not provided',
-      mainCrop: crop.trim(),
-      status,
-      farms:
-        farmer?.farms.length
-          ? farmer.farms.map((farm, index) => (index === 0 ? { ...farm, crop: crop.trim() } : farm))
-          : [],
-      assistanceRequests: farmer?.assistanceRequests ?? [],
-      reports: farmer?.reports ?? [],
+    if (saving) return;
+    onSave(farmer.id, {
+      full_name: name.trim(),
+      address: barangay.trim(),
+      status: rawStatus,
     });
   };
 
   return (
-    <div className="farmers-modal-backdrop" onMouseDown={onClose}>
+    <div
+      className="farmers-modal-backdrop"
+      onMouseDown={saving ? undefined : onClose}
+    >
       <section
         aria-labelledby="farmer-form-title"
         aria-modal="true"
@@ -170,47 +163,71 @@ function FarmerForm({ farmer, onClose, onSave }: FarmerFormProps) {
         <div className="farmers-modal-header">
           <div>
             <p className="farmers-eyebrow">FARMER DIRECTORY</p>
-            <h2 id="farmer-form-title">{farmer ? 'Edit farmer' : 'Add farmer'}</h2>
+            <h2 id="farmer-form-title">Edit farmer</h2>
           </div>
-          <button aria-label="Close form" className="farmers-icon-button" onClick={onClose} type="button">
+          <button
+            aria-label="Close form"
+            className="farmers-icon-button"
+            onClick={onClose}
+            disabled={saving}
+            type="button"
+          >
             <X size={19} />
           </button>
         </div>
-        <p className="farmers-modal-note">
-          Enter verified information only. Changes are kept in this browser session and are not saved to a database.
-        </p>
+
         <form className="farmer-form" onSubmit={handleSubmit}>
           <label>
             Farmer name
-            <input autoFocus onChange={(event) => setName(event.target.value)} required value={name} />
+            <input
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+              required
+              value={name}
+              disabled={saving}
+            />
           </label>
+
           <label>
-            Barangay
-            <input onChange={(event) => setBarangay(event.target.value)} required value={barangay} />
+            Address / Barangay
+            <input
+              onChange={(event) => setBarangay(event.target.value)}
+              required
+              value={barangay}
+              disabled={saving}
+            />
           </label>
-          <label>
-            Phone <span className="farmer-field-optional">Optional</span>
-            <input autoComplete="tel" onChange={(event) => setPhone(event.target.value)} value={phone} />
-          </label>
-          <label>
-            Main crop <span className="farmer-field-optional">Optional</span>
-            <input onChange={(event) => setCrop(event.target.value)} value={crop} />
-          </label>
+
           <label className="farmer-status-field">
-            Registration status
-            <select onChange={(event) => setStatus(event.target.value as FarmerStatus)} value={status}>
-              {statusOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
+            Account status
+            <select
+              onChange={(event) =>
+                setRawStatus(event.target.value as 'active' | 'inactive')
+              }
+              value={rawStatus}
+              disabled={saving}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
           </label>
+
           <div className="farmers-modal-actions">
-            <button className="farmers-button farmers-button--secondary" onClick={onClose} type="button">
+            <button
+              className="farmers-button farmers-button--secondary"
+              onClick={onClose}
+              type="button"
+              disabled={saving}
+            >
               Cancel
             </button>
-            <button className="farmers-button farmers-button--primary" type="submit">
+            <button
+              className="farmers-button farmers-button--primary"
+              type="submit"
+              disabled={saving}
+            >
               <Check size={16} />
-              {farmer ? 'Save changes' : 'Add farmer'}
+              {saving ? 'Saving…' : 'Save changes'}
             </button>
           </div>
         </form>
@@ -219,7 +236,21 @@ function FarmerForm({ farmer, onClose, onSave }: FarmerFormProps) {
   );
 }
 
-function FarmerProfile({ farmer, onClose, onEdit }: { farmer: Farmer; onClose: () => void; onEdit: () => void }) {
+// ---------- profile modal ----------
+
+interface FarmerProfileProps {
+  farmer: Farmer;
+  avatarUrl: string | null;
+  onClose: () => void;
+  onEdit: () => void;
+}
+
+function FarmerProfile({
+  farmer,
+  avatarUrl,
+  onClose,
+  onEdit,
+}: FarmerProfileProps) {
   return (
     <div className="farmers-modal-backdrop" onMouseDown={onClose}>
       <section
@@ -231,80 +262,112 @@ function FarmerProfile({ farmer, onClose, onEdit }: { farmer: Farmer; onClose: (
       >
         <div className="farmers-modal-header">
           <div className="farmer-profile-heading">
-            <div className="farmer-avatar">{farmer.name.slice(-3)}</div>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={farmer.name}
+                className="farmer-avatar farmer-avatar--img"
+              />
+            ) : (
+              <div className="farmer-avatar">
+                {initialFromName(farmer.name)}
+              </div>
+            )}
             <div>
-              <p className="farmers-eyebrow">{farmer.id} · SAMPLE RECORD</p>
+              <p className="farmers-eyebrow">
+                {farmer.id.slice(0, 8).toUpperCase()}
+              </p>
               <h2 id="farmer-profile-title">{farmer.name}</h2>
             </div>
           </div>
-          <button aria-label="Close profile" className="farmers-icon-button" onClick={onClose} type="button">
+          <button
+            aria-label="Close profile"
+            className="farmers-icon-button"
+            onClick={onClose}
+            type="button"
+          >
             <X size={19} />
           </button>
         </div>
 
         <div className="farmer-profile-summary">
-          <span className={`farmer-status farmer-status--${farmer.status.toLowerCase().replaceAll(' ', '-')}`}>
+          <span
+            className={`farmer-status farmer-status--${statusClass(farmer.status)}`}
+          >
             {farmer.status}
           </span>
-          <span><MapPin size={15} /> {farmer.barangay}</span>
+          {farmer.barangay && (
+            <span>
+              <MapPin size={15} /> {farmer.barangay}
+            </span>
+          )}
         </div>
 
         <div className="farmer-profile-section">
           <h3>Contact details</h3>
           <dl className="farmer-contact-grid">
-            <div><dt>Phone</dt><dd>{farmer.phone}</dd></div>
-            <div><dt>Email</dt><dd>{farmer.email}</dd></div>
+            <div>
+              <dt>Email</dt>
+              <dd>{farmer.email || 'Not provided'}</dd>
+            </div>
           </dl>
         </div>
 
         <div className="farmer-profile-section">
-          <h3>Farm records <span>{farmer.farms.length}</span></h3>
+          <h3>
+            Farm records <span>{farmer.farms.length}</span>
+          </h3>
           {farmer.farms.length ? (
             <div className="farmer-profile-list">
               {farmer.farms.map((farm) => (
-                <div className="farmer-detail-row" key={farm.name}>
-                  <div><strong>{farm.name}</strong><span>{farm.crop}</span></div>
+                <div className="farmer-detail-row" key={farm.id}>
+                  <div>
+                    <strong>{farm.name}</strong>
+                    <span>{farm.crop || 'Crop not recorded'}</span>
+                  </div>
                   <span>{farm.area}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="farmer-empty-detail">No farm records have been added.</p>
+            <p className="farmer-empty-detail">No farms recorded yet.</p>
           )}
         </div>
 
         <div className="farmer-profile-section">
-          <h3>Assistance-request history</h3>
-          {farmer.assistanceRequests.length ? (
-            <ul className="farmer-assistance-list">
-              {farmer.assistanceRequests.map((request) => <li key={request}>{request}</li>)}
-            </ul>
-          ) : (
-            <p className="farmer-empty-detail">No assistance requests in this sample record.</p>
-          )}
-        </div>
-
-        <div className="farmer-profile-section">
-          <h3>Submitted reports <span>{farmer.reports.length}</span></h3>
+          <h3>
+            Submitted reports <span>{farmer.reports.length}</span>
+          </h3>
           {farmer.reports.length ? (
             <div className="farmer-profile-list">
               {farmer.reports.map((report) => (
                 <div className="farmer-detail-row" key={report.id}>
-                  <div><strong>{report.type}</strong><span>{report.id} · {report.date}</span></div>
+                  <div>
+                    <strong>{report.type}</strong>
+                    <span>{report.date}</span>
+                  </div>
                   <span className="farmer-report-status">{report.status}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="farmer-empty-detail">No submitted reports in this sample record.</p>
+            <p className="farmer-empty-detail">No reports submitted yet.</p>
           )}
         </div>
 
         <div className="farmers-modal-actions">
-          <button className="farmers-button farmers-button--secondary" onClick={onClose} type="button">
+          <button
+            className="farmers-button farmers-button--secondary"
+            onClick={onClose}
+            type="button"
+          >
             Close
           </button>
-          <button className="farmers-button farmers-button--primary" onClick={onEdit} type="button">
+          <button
+            className="farmers-button farmers-button--primary"
+            onClick={onEdit}
+            type="button"
+          >
             <Pencil size={15} /> Edit farmer
           </button>
         </div>
@@ -313,34 +376,144 @@ function FarmerProfile({ farmer, onClose, onEdit }: { farmer: Farmer; onClose: (
   );
 }
 
+// ---------- main ----------
+
 const AdminFarmers = () => {
-  const [farmers, setFarmers] = useState(initialFarmers);
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [view, setView] = useState<'list' | 'map'>('list');
   const [search, setSearch] = useState('');
   const [barangayFilter, setBarangayFilter] = useState(allFilter);
   const [cropFilter, setCropFilter] = useState(allFilter);
   const [statusFilter, setStatusFilter] = useState(allFilter);
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
-  const [formFarmer, setFormFarmer] = useState<Farmer | null | undefined>(undefined);
+  const [editingFarmer, setEditingFarmer] = useState<Farmer | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const [farmersRes, farmsRes, reportsRes] = await Promise.all([
+      supabase
+        .from('farmers')
+        .select('id, full_name, address, email, status, avatar_path')
+        .eq('role', 'farmer')
+        .order('created_at', { ascending: false }),
+
+      supabase
+        .from('farms')
+        .select('id, farmer_id, name, crop, area_hectares'),
+
+      supabase
+        .from('pest_reports')
+        .select('id, farmer_id, note, status, created_at')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    const firstError = farmersRes.error || farmsRes.error || reportsRes.error;
+    if (firstError) {
+      setError(firstError.message);
+      setFarmers([]);
+      setAvatarUrls({});
+      setLoading(false);
+      return;
+    }
+
+    // Group farms + reports by farmer (this uses the GLOBAL Map now — no
+    // shadowing, the lucide icon is imported as `MapIcon`.)
+    const farmsByFarmer = new Map<string, FarmerFarm[]>();
+    for (const f of (farmsRes.data ?? []) as FarmRow[]) {
+      const list = farmsByFarmer.get(f.farmer_id) ?? [];
+      list.push({
+        id: f.id,
+        name: f.name,
+        crop: f.crop ?? '',
+        area: `${Number(f.area_hectares ?? 0).toFixed(1)} ha`,
+      });
+      farmsByFarmer.set(f.farmer_id, list);
+    }
+
+    const reportsByFarmer = new Map<string, FarmerReport[]>();
+    for (const r of (reportsRes.data ?? []) as ReportRow[]) {
+      const list = reportsByFarmer.get(r.farmer_id) ?? [];
+      list.push({
+        id: r.id,
+        type: r.note?.trim() || 'Report submitted',
+        date: formatDate(r.created_at),
+        status:
+          r.status === 'resolved'
+            ? 'Resolved'
+            : r.status === 'reviewed'
+              ? 'Reviewed'
+              : 'Pending',
+      });
+      reportsByFarmer.set(r.farmer_id, list);
+    }
+
+    const rows = (farmersRes.data ?? []) as FarmerRow[];
+
+    const mapped: Farmer[] = rows.map((row) => {
+      const farmList = farmsByFarmer.get(row.id) ?? [];
+      return {
+        id: row.id,
+        name: row.full_name,
+        barangay: row.address ?? '',
+        email: row.email ?? '',
+        mainCrop: farmList[0]?.crop ?? '',
+        status: toUiStatus(row.status),
+        avatarPath: row.avatar_path,
+        farms: farmList,
+        reports: reportsByFarmer.get(row.id) ?? [],
+      };
+    });
+
+    setFarmers(mapped);
+
+    // Sign every avatar in one round-trip
+    const signed = await signAvatarUrls(
+      rows.map((r) => r.avatar_path ?? '').filter(Boolean),
+    );
+    setAvatarUrls(signed);
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const barangays = useMemo(
-    () => [...new Set(farmers.map((farmer) => farmer.barangay))].sort(),
+    () => [...new Set(farmers.map((f) => f.barangay).filter(Boolean))].sort(),
     [farmers],
   );
+
   const crops = useMemo(
-    () => [...new Set(farmers.flatMap((farmer) => farmer.farms.map((farm) => farm.crop)))].sort(),
+    () =>
+      [
+        ...new Set(
+          farmers.flatMap((f) =>
+            f.farms.map((farm) => farm.crop).filter(Boolean),
+          ),
+        ),
+      ].sort(),
     [farmers],
   );
+
   const filteredFarmers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     return farmers.filter((farmer) => {
       const matchesSearch =
         !normalizedSearch ||
-        [farmer.name, farmer.id, farmer.barangay, farmer.phone].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
+        [farmer.name, farmer.id, farmer.barangay, farmer.email].some((value) =>
+          (value ?? '').toLowerCase().includes(normalizedSearch),
         );
       const matchesCrop =
-        cropFilter === allFilter || farmer.farms.some((farm) => farm.crop === cropFilter);
+        cropFilter === allFilter ||
+        farmer.farms.some((farm) => farm.crop === cropFilter);
       return (
         matchesSearch &&
         (barangayFilter === allFilter || farmer.barangay === barangayFilter) &&
@@ -350,24 +523,43 @@ const AdminFarmers = () => {
     });
   }, [barangayFilter, cropFilter, farmers, search, statusFilter]);
 
-  const saveFarmer = (farmer: Farmer) => {
-    if (farmer.id) {
-      setFarmers((current) => current.map((record) => (record.id === farmer.id ? farmer : record)));
-    } else {
-      const nextId = Math.max(0, ...farmers.map((record) => Number(record.id.slice(2)))) + 1;
-      setFarmers((current) => [...current, { ...farmer, id: `F-${String(nextId).padStart(4, '0')}` }]);
+  const handleSaveFarmer = async (
+    id: string,
+    patch: { full_name: string; address: string; status: 'active' | 'inactive' },
+  ) => {
+    if (saving) return;
+    setSaving(true);
+    setError(null);
+
+    const { error: dbError } = await supabase
+      .from('farmers')
+      .update({
+        full_name: patch.full_name,
+        address: patch.address,
+        status: patch.status,
+      })
+      .eq('id', id);
+
+    setSaving(false);
+
+    if (dbError) {
+      setError(dbError.message);
+      return;
     }
-    setFormFarmer(undefined);
+
+    setEditingFarmer(null);
+    setSelectedFarmer(null);
+    await load();
   };
 
   const editFarmer = (farmer: Farmer) => {
     setSelectedFarmer(null);
-    setFormFarmer(farmer);
+    setEditingFarmer(farmer);
   };
 
-  const activeCount = farmers.filter((farmer) => farmer.status === 'Active').length;
-  const pendingCount = farmers.filter((farmer) => farmer.status === 'Pending Verification').length;
-  const farmCount = farmers.reduce((total, farmer) => total + farmer.farms.length, 0);
+  const activeCount = farmers.filter((f) => f.status === 'Active').length;
+  const inactiveCount = farmers.filter((f) => f.status === 'Inactive').length;
+  const farmCount = farmers.reduce((total, f) => total + f.farms.length, 0);
 
   return (
     <main className="farmers-page">
@@ -375,34 +567,57 @@ const AdminFarmers = () => {
         <div>
           <p className="farmers-eyebrow">COMMUNITY DIRECTORY</p>
           <h1>Farmers</h1>
-          <p className="farmers-page-description">Find and manage farmer records across the community.</p>
+          <p className="farmers-page-description">
+            Find and manage farmer records across the community.
+          </p>
         </div>
-        <button className="farmers-button farmers-button--primary" onClick={() => setFormFarmer(null)} type="button">
-          <Plus size={17} /> Register farmer
-        </button>
       </header>
 
-      <div className="farmers-demo-notice">
-        <ClipboardList size={17} />
-        <p><strong>Sample data</strong> — These example records are for demonstration only. They are not verified and are not saved to a database.</p>
-      </div>
+      {error && (
+        <p className="admin-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <section aria-label="Farmer directory summary" className="farmers-summary">
         <article className="farmers-summary-card">
-          <div className="farmers-summary-icon"><Users size={18} /></div>
-          <div><span>Total sample farmers</span><strong>{farmers.length}</strong></div>
+          <div className="farmers-summary-icon">
+            <Users size={18} />
+          </div>
+          <div>
+            <span>Total farmers</span>
+            <strong>{loading ? '—' : farmers.length}</strong>
+          </div>
         </article>
+
         <article className="farmers-summary-card">
-          <div className="farmers-summary-icon farmers-summary-icon--green"><Check size={18} /></div>
-          <div><span>Active</span><strong>{activeCount}</strong></div>
+          <div className="farmers-summary-icon farmers-summary-icon--green">
+            <Check size={18} />
+          </div>
+          <div>
+            <span>Active</span>
+            <strong>{loading ? '—' : activeCount}</strong>
+          </div>
         </article>
+
         <article className="farmers-summary-card">
-          <div className="farmers-summary-icon farmers-summary-icon--amber"><ClipboardList size={18} /></div>
-          <div><span>Pending verification</span><strong>{pendingCount}</strong></div>
+          <div className="farmers-summary-icon farmers-summary-icon--amber">
+            <ClipboardList size={18} />
+          </div>
+          <div>
+            <span>Inactive</span>
+            <strong>{loading ? '—' : inactiveCount}</strong>
+          </div>
         </article>
+
         <article className="farmers-summary-card">
-          <div className="farmers-summary-icon farmers-summary-icon--blue"><MapPin size={18} /></div>
-          <div><span>Sample farm records</span><strong>{farmCount}</strong></div>
+          <div className="farmers-summary-icon farmers-summary-icon--blue">
+            <MapPin size={18} />
+          </div>
+          <div>
+            <span>Farm records</span>
+            <strong>{loading ? '—' : farmCount}</strong>
+          </div>
         </article>
       </section>
 
@@ -410,162 +625,285 @@ const AdminFarmers = () => {
         <div className="farmers-directory-heading">
           <div>
             <h2>Farmer directory</h2>
-            <p>{filteredFarmers.length} {filteredFarmers.length === 1 ? 'record' : 'records'} shown</p>
+            <p>
+              {loading
+                ? 'Loading…'
+                : `${filteredFarmers.length} ${
+                    filteredFarmers.length === 1 ? 'record' : 'records'
+                  } shown`}
+            </p>
           </div>
-          <div aria-label="Directory view" className="farmers-view-toggle" role="group">
+
+          <div
+            aria-label="Directory view"
+            className="farmers-view-toggle"
+            role="group"
+          >
             <button
               aria-pressed={view === 'list'}
-              className={view === 'list' ? 'farmers-view-button farmers-view-button--active' : 'farmers-view-button'}
+              className={
+                view === 'list'
+                  ? 'farmers-view-button farmers-view-button--active'
+                  : 'farmers-view-button'
+              }
               onClick={() => setView('list')}
               type="button"
             >
-              <List size={15} /> List
+              <ListIcon size={15} /> List
             </button>
             <button
               aria-pressed={view === 'map'}
-              className={view === 'map' ? 'farmers-view-button farmers-view-button--active' : 'farmers-view-button'}
+              className={
+                view === 'map'
+                  ? 'farmers-view-button farmers-view-button--active'
+                  : 'farmers-view-button'
+              }
               onClick={() => setView('map')}
               type="button"
             >
-              <Map size={15} /> Map
+              <MapIcon size={15} /> Map
             </button>
           </div>
         </div>
+
         <div className="farmers-filters">
           <label className="farmers-search">
             <Search aria-hidden="true" size={17} />
             <input
-              aria-label="Search farmers by name, ID, barangay, or phone"
+              aria-label="Search farmers by name, ID, barangay, or email"
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search name, ID, barangay..."
               value={search}
             />
           </label>
+
           <label className="farmers-filter">
             <span>Barangay</span>
-            <select onChange={(event) => setBarangayFilter(event.target.value)} value={barangayFilter}>
+            <select
+              onChange={(event) => setBarangayFilter(event.target.value)}
+              value={barangayFilter}
+            >
               <option value={allFilter}>All barangays</option>
-              {barangays.map((barangay) => <option key={barangay} value={barangay}>{barangay}</option>)}
+              {barangays.map((barangay) => (
+                <option key={barangay} value={barangay}>
+                  {barangay}
+                </option>
+              ))}
             </select>
             <ChevronDown aria-hidden="true" size={15} />
           </label>
+
           <label className="farmers-filter">
             <span>Crop</span>
-            <select onChange={(event) => setCropFilter(event.target.value)} value={cropFilter}>
+            <select
+              onChange={(event) => setCropFilter(event.target.value)}
+              value={cropFilter}
+            >
               <option value={allFilter}>All crops</option>
-              {crops.map((crop) => <option key={crop} value={crop}>{crop}</option>)}
+              {crops.map((crop) => (
+                <option key={crop} value={crop}>
+                  {crop}
+                </option>
+              ))}
             </select>
             <ChevronDown aria-hidden="true" size={15} />
           </label>
+
           <label className="farmers-filter">
             <span>Status</span>
-            <select onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
+            <select
+              onChange={(event) => setStatusFilter(event.target.value)}
+              value={statusFilter}
+            >
               <option value={allFilter}>All statuses</option>
-              {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
             <ChevronDown aria-hidden="true" size={15} />
           </label>
         </div>
 
-        {view === 'list' ? <div className="farmers-table-wrap">
-          <table className="farmers-table">
-            <thead>
-              <tr>
-                <th scope="col">Farmer ID</th>
-                <th scope="col">Farmer</th>
-                <th scope="col">Barangay</th>
-                <th scope="col">Contact status</th>
-                <th scope="col">Main crop</th>
-                <th scope="col">Farms</th>
-                <th scope="col">Registration status</th>
-                <th scope="col"><span className="farmers-visually-hidden">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFarmers.map((farmer) => (
-                <tr key={farmer.id}>
-                  <td>{farmer.id}</td>
-                  <td>
-                    <div className="farmer-table-identity">
-                      <div className="farmer-avatar">{farmer.name.slice(-3)}</div>
-                      <div><strong>{farmer.name}</strong></div>
-                    </div>
-                  </td>
-                  <td>{farmer.barangay}</td>
-                  <td>
-                    <span className={`farmer-contact-status${farmer.phone === 'Not provided' ? ' farmer-contact-status--missing' : ''}`}>
-                      {farmer.phone === 'Not provided' ? 'Not provided' : 'Available'}
-                    </span>
-                  </td>
-                  <td>{farmer.mainCrop || 'Not recorded'}</td>
-                  <td>{farmer.farms.length}</td>
-                  <td>
-                    <span className={`farmer-status farmer-status--${farmer.status.toLowerCase().replaceAll(' ', '-')}`}>
-                      {farmer.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="farmer-row-actions">
-                      <button className="farmer-text-action" onClick={() => setSelectedFarmer(farmer)} type="button">
-                        View profile
-                      </button>
-                      <button
-                        aria-label={`Edit ${farmer.name}`}
-                        className="farmers-icon-button farmers-edit-button"
-                        onClick={() => editFarmer(farmer)}
-                        type="button"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredFarmers.length === 0 && (
+        {view === 'list' ? (
+          <div className="farmers-table-wrap">
+            <table className="farmers-table">
+              <thead>
                 <tr>
-                  <td className="farmers-empty-state" colSpan={8}>
-                    No farmers match these search and filter criteria.
-                  </td>
+                  <th scope="col">Farmer ID</th>
+                  <th scope="col">Farmer</th>
+                  <th scope="col">Barangay</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Main crop</th>
+                  <th scope="col">Farms</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">
+                    <span className="farmers-visually-hidden">Actions</span>
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div> : (
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td className="farmers-empty-state" colSpan={8}>
+                      Loading farmers…
+                    </td>
+                  </tr>
+                )}
+
+                {!loading && filteredFarmers.length === 0 && (
+                  <tr>
+                    <td className="farmers-empty-state" colSpan={8}>
+                      {farmers.length === 0
+                        ? 'No farmers registered yet.'
+                        : 'No farmers match these search and filter criteria.'}
+                    </td>
+                  </tr>
+                )}
+
+                {!loading &&
+                  filteredFarmers.map((farmer) => {
+                    const avatarUrl = farmer.avatarPath
+                      ? avatarUrls[farmer.avatarPath]
+                      : null;
+                    return (
+                      <tr key={farmer.id}>
+                        <td>{farmer.id.slice(0, 8).toUpperCase()}</td>
+                        <td>
+                          <div className="farmer-table-identity">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={farmer.name}
+                                className="farmer-avatar farmer-avatar--img"
+                              />
+                            ) : (
+                              <div className="farmer-avatar">
+                                {initialFromName(farmer.name)}
+                              </div>
+                            )}
+                            <div>
+                              <strong>{farmer.name}</strong>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{farmer.barangay || 'Not recorded'}</td>
+                        <td>{farmer.email || '—'}</td>
+                        <td>{farmer.mainCrop || 'Not recorded'}</td>
+                        <td>{farmer.farms.length}</td>
+                        <td>
+                          <span
+                            className={`farmer-status farmer-status--${statusClass(
+                              farmer.status,
+                            )}`}
+                          >
+                            {farmer.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="farmer-row-actions">
+                            <button
+                              className="farmer-text-action"
+                              onClick={() => setSelectedFarmer(farmer)}
+                              type="button"
+                            >
+                              View
+                            </button>
+                            <button
+                              aria-label={`Edit ${farmer.name}`}
+                              className="farmers-icon-button farmers-edit-button"
+                              onClick={() => editFarmer(farmer)}
+                              type="button"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
           <div className="farmers-map-overview">
             <div className="farmers-map-notice">
               <MapPin size={17} />
-              <p><strong>Barangay-level overview · not to scale.</strong> No verified farmer or farm coordinates are available, so no map markers are shown.</p>
+              <p>
+                <strong>Barangay-level overview · not to scale.</strong>{' '}
+                Farmers are grouped by the address on file; coordinates are not
+                collected.
+              </p>
             </div>
+
             <div className="farmers-map-groups">
               {barangays
-                .filter((name) => barangayFilter === allFilter || name === barangayFilter)
+                .filter(
+                  (name) =>
+                    barangayFilter === allFilter || name === barangayFilter,
+                )
                 .map((name) => {
-                  const group = filteredFarmers.filter((farmer) => farmer.barangay === name);
+                  const group = filteredFarmers.filter(
+                    (f) => f.barangay === name,
+                  );
                   return (
                     <section className="farmers-map-group" key={name}>
                       <header>
-                        <span className="farmers-map-group-icon"><MapPin size={16} /></span>
-                        <div><h3>{name}</h3><p>{group.length} matching {group.length === 1 ? 'farmer' : 'farmers'}</p></div>
+                        <span className="farmers-map-group-icon">
+                          <MapPin size={16} />
+                        </span>
+                        <div>
+                          <h3>{name}</h3>
+                          <p>
+                            {group.length} matching{' '}
+                            {group.length === 1 ? 'farmer' : 'farmers'}
+                          </p>
+                        </div>
                         <span className="farmers-map-count">{group.length}</span>
                       </header>
+
                       {group.length ? (
                         <ul>
                           {group.map((farmer) => (
                             <li key={farmer.id}>
                               <span className="farmer-map-record">
                                 <strong>{farmer.name}</strong>
-                                <span>{farmer.id} · {farmer.mainCrop || 'Crop not recorded'} · {farmer.farms.length} {farmer.farms.length === 1 ? 'farm' : 'farms'}</span>
+                                <span>
+                                  {farmer.id.slice(0, 8).toUpperCase()} ·{' '}
+                                  {farmer.mainCrop || 'Crop not recorded'} ·{' '}
+                                  {farmer.farms.length}{' '}
+                                  {farmer.farms.length === 1 ? 'farm' : 'farms'}
+                                </span>
                               </span>
-                              <button className="farmer-text-action" onClick={() => setSelectedFarmer(farmer)} type="button">View profile</button>
+                              <button
+                                className="farmer-text-action"
+                                onClick={() => setSelectedFarmer(farmer)}
+                                type="button"
+                              >
+                                View
+                              </button>
                             </li>
                           ))}
                         </ul>
-                      ) : <p className="farmers-map-empty">No farmers match the current search and filters.</p>}
+                      ) : (
+                        <p className="farmers-map-empty">
+                          No farmers match the current search and filters.
+                        </p>
+                      )}
                     </section>
                   );
                 })}
+
+              {!loading && barangays.length === 0 && (
+                <p className="farmers-map-empty">No farmers registered yet.</p>
+              )}
             </div>
-            <p className="farmers-map-footnote"><FileText size={14} /> Records are grouped by their barangay only; this view does not imply precise or verified locations.</p>
+
+            <p className="farmers-map-footnote">
+              <FileText size={14} /> Records are grouped by their address only;
+              this view does not imply precise or verified locations.
+            </p>
           </div>
         )}
       </section>
@@ -573,12 +911,26 @@ const AdminFarmers = () => {
       {selectedFarmer && (
         <FarmerProfile
           farmer={selectedFarmer}
+          avatarUrl={
+            selectedFarmer.avatarPath
+              ? avatarUrls[selectedFarmer.avatarPath] ?? null
+              : null
+          }
           onClose={() => setSelectedFarmer(null)}
           onEdit={() => editFarmer(selectedFarmer)}
         />
       )}
-      {formFarmer !== undefined && (
-        <FarmerForm farmer={formFarmer} onClose={() => setFormFarmer(undefined)} onSave={saveFarmer} />
+
+      {editingFarmer && (
+        <FarmerForm
+          farmer={editingFarmer}
+          saving={saving}
+          onClose={() => {
+            if (saving) return;
+            setEditingFarmer(null);
+          }}
+          onSave={handleSaveFarmer}
+        />
       )}
     </main>
   );

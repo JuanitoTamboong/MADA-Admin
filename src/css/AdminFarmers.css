@@ -1,3 +1,7 @@
+/* =========================================================
+   AdminFarmers.css
+   ========================================================= */
+
 .farmers-page {
   min-height: calc(100vh - 56px);
   padding: 26px 28px 36px;
@@ -71,28 +75,12 @@
   background: #f5f8f6;
 }
 
-.farmers-demo-notice {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 11px 13px;
-  border: 1px solid #eadfb8;
-  border-radius: 8px;
-  background: #fffaf0;
-  color: #786638;
-  font-size: 0.67rem;
+.farmers-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
-.farmers-demo-notice svg {
-  flex: 0 0 auto;
-  color: #ad8730;
-}
-
-.farmers-demo-notice strong {
-  color: #72561b;
-}
-
+/* Summary row */
 .farmers-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -155,6 +143,7 @@
   line-height: 1.2;
 }
 
+/* Directory card */
 .farmers-directory-card {
   overflow: hidden;
   border: 1px solid #e7eeea;
@@ -180,6 +169,7 @@
   font-size: 0.62rem;
 }
 
+/* Filters */
 .farmers-filters {
   display: flex;
   align-items: center;
@@ -260,6 +250,7 @@
   pointer-events: none;
 }
 
+/* Table */
 .farmers-table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -302,6 +293,7 @@
   gap: 9px;
 }
 
+/* Initials-only fallback avatar */
 .farmer-avatar {
   display: grid;
   width: 31px;
@@ -313,6 +305,15 @@
   color: #34704d;
   font-size: 0.54rem;
   font-weight: 800;
+}
+
+/* Real uploaded image (same slot, but an <img>) */
+.farmer-avatar--img {
+  display: block;
+  object-fit: cover;
+  padding: 0;
+  background-color: #e2e8f0;
+  color: transparent;      /* in case the alt text flashes */
 }
 
 .farmer-table-identity strong,
@@ -332,6 +333,7 @@
   font-size: 0.53rem;
 }
 
+/* Status badges — now only two */
 .farmer-status {
   display: inline-flex;
   min-height: 21px;
@@ -345,11 +347,6 @@
 .farmer-status--active {
   background: #eaf6ee;
   color: #247447;
-}
-
-.farmer-status--pending-verification {
-  background: #fff5df;
-  color: #9b6b17;
 }
 
 .farmer-status--inactive {
@@ -398,6 +395,11 @@
   color: #1a7040;
 }
 
+.farmers-icon-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .farmers-edit-button {
   width: 28px;
   height: 28px;
@@ -419,6 +421,7 @@
   clip-path: inset(50%);
 }
 
+/* Modal shell */
 .farmers-modal-backdrop {
   position: fixed;
   z-index: 30;
@@ -456,12 +459,7 @@
   font-weight: 750;
 }
 
-.farmers-modal-note {
-  margin: 11px 0 18px;
-  color: #78867d;
-  font-size: 0.65rem;
-}
-
+/* Edit form */
 .farmer-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -508,6 +506,7 @@
   margin-top: 20px;
 }
 
+/* Profile modal */
 .farmer-profile-modal {
   width: min(100%, 540px);
 }
@@ -520,6 +519,10 @@
   width: 40px;
   height: 40px;
   font-size: 0.62rem;
+}
+
+.farmer-profile-heading .farmer-avatar--img {
+  font-size: 0; /* no initials rendered for images */
 }
 
 .farmer-profile-heading .farmers-eyebrow {
@@ -621,21 +624,12 @@
   color: #819087;
 }
 
-.farmer-assistance-list {
-  padding-left: 17px;
-  color: #66756b;
-  font-size: 0.62rem;
-}
-
-.farmer-assistance-list li + li {
-  margin-top: 4px;
-}
-
 .farmer-empty-detail {
   color: #87938b;
   font-size: 0.61rem;
 }
 
+/* View toggle */
 .farmers-view-toggle {
   display: inline-flex;
   padding: 3px;
@@ -667,17 +661,7 @@
   box-shadow: 0 1px 3px rgba(32, 67, 44, 0.1);
 }
 
-.farmers-contact-status {
-  color: #267246;
-  font-size: 0.57rem;
-  font-weight: 650;
-}
-
-.farmers-contact-status--missing {
-  color: #87938b;
-  font-weight: 500;
-}
-
+/* Map view */
 .farmers-map-overview {
   padding: 14px 18px 16px;
   border-top: 1px solid #edf1ee;
@@ -822,6 +806,7 @@
   font-size: 0.54rem;
 }
 
+/* Report status pill (used inside profile modal) */
 .farmer-report-status {
   flex: 0 0 auto;
   padding: 3px 6px;
@@ -831,6 +816,19 @@
   font-size: 0.51rem;
 }
 
+/* Error banner (used when a Supabase query fails) */
+.admin-error {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  color: #b42318;
+  background: #fff3f1;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+/* Responsive */
 @media (max-width: 1000px) {
   .farmers-page {
     padding: 22px 18px 30px;
@@ -866,12 +864,6 @@
     font-size: 1.3rem;
   }
 
-  .farmers-page-heading .farmers-button {
-    padding: 0 10px;
-    font-size: 0.63rem;
-    white-space: nowrap;
-  }
-
   .farmers-summary {
     gap: 8px;
   }
@@ -893,9 +885,6 @@
 
   .farmers-directory-heading {
     padding: 14px 12px 11px;
-  }
-
-  .farmers-directory-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
