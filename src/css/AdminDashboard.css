@@ -1,4 +1,17 @@
-/* --- 2. MAIN CONTENT AREA --- */
+/* =========================================================
+   AdminDashboard.css
+   ========================================================= */
+
+/* --- LAYOUT VARIABLES --- */
+:root {
+  --primary-emerald: #166c42;
+  --secondary-emerald: #22a06b;
+  --text-dark: #0d2818;
+  --text-muted: #6b7280;
+  --border-color: #e1e9e4;
+}
+
+/* --- MAIN CONTENT AREA --- */
 .main-wrapper {
   flex: 1;
   display: flex;
@@ -203,6 +216,19 @@
   gap: 12px;
 }
 
+/* ---------- ERROR BANNER ---------- */
+.admin-error {
+  grid-column: 1 / -1;
+  margin: 0 0 8px;
+  padding: 9px 12px;
+  color: #b42318;
+  background: #fff3f1;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  line-height: 1.4;
+}
+
 /* ---------- HERO BANNER ---------- */
 .hero-banner {
   background:
@@ -390,6 +416,58 @@
   gap: 2px;
 }
 
+.production-chart-note {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  line-height: 1.4;
+}
+
+.production-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+}
+
+.production-chart-row {
+  display: grid;
+  grid-template-columns: minmax(55px, 0.8fr) minmax(40px, 2fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dark);
+  font-size: 0.58rem;
+}
+
+.production-chart-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.production-chart-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf1ed;
+}
+
+.production-chart-bar {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: #1b7045;
+}
+
+.production-chart-row b {
+  min-width: 18px;
+  text-align: right;
+  font-size: inherit;
+}
+
 .line-chart-svg {
   width: 100%;
   height: 120px;
@@ -428,6 +506,57 @@
   justify-content: space-between;
   font-size: 0.56rem;
   color: var(--text-muted);
+}
+
+/* ---------- EMPTY / LOADING / HELPER STATES ---------- */
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px 14px;
+  min-height: 120px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  background: #f9fbfa;
+  border: 1px dashed #e1e9e4;
+  border-radius: 10px;
+}
+
+.chart-empty p {
+  margin: 0;
+}
+
+.chart-cta {
+  border: none;
+  background: #166c42;
+  color: #ffffff;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.chart-cta:hover {
+  background: #0e4d2f;
+}
+
+.chart-cta:focus-visible {
+  outline: 2px solid rgba(22, 115, 66, 0.35);
+  outline-offset: 2px;
+}
+
+.chart-empty-text {
+  padding: 14px 6px;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  text-align: center;
+  margin: 0;
 }
 
 /* ---------- DISTRIBUTION ---------- */
@@ -495,6 +624,31 @@
   font-weight: 500;
 }
 
+/* Full-width legend — used when there is no donut chart */
+.crop-legend--full {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.61rem;
+}
+
+.crop-legend--full li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #334155;
+}
+
+.crop-legend--full li b {
+  margin-left: auto;
+  color: #0d2818;
+  font-weight: 700;
+}
+
 .dot {
   width: 6px;
   height: 6px;
@@ -516,7 +670,7 @@
   gap: 12px;
 }
 
-/* ---------- DATA TABLE (FIXED) ---------- */
+/* ---------- DATA TABLE ---------- */
 .data-table {
   table-layout: fixed;
   width: 100%;
@@ -584,7 +738,6 @@
 .status-badge.active   { background-color: #ecfdf5; color: #047857; }
 .status-badge.inactive { background-color: #fef2f2; color: #ef4444; }
 
-/* View button — fixed sizing */
 .view-btn {
   display: inline-flex;
   align-items: center;
@@ -648,7 +801,6 @@
   color: var(--text-muted);
 }
 
-/* ---------- WEATHER LOCATION (emoji → icon) ---------- */
 .weather-location {
   display: flex;
   flex-direction: column;
@@ -710,7 +862,19 @@
   color: #475569;
 }
 
-/* ---------- RIGHT COLUMN WIDGETS ---------- */
+/* Anchor variant of alert-item */
+.other-alerts a.alert-item {
+  text-decoration: none;
+  color: inherit;
+  padding: 6px 0;
+  transition: color 140ms ease;
+}
+
+.other-alerts a.alert-item:hover {
+  color: #166c42;
+}
+
+/* ---------- REPORTS (right column) ---------- */
 .reports-list {
   display: flex;
   flex-direction: column;
@@ -729,6 +893,18 @@
 .report-item:last-child {
   padding-bottom: 0;
   border-bottom: 0;
+}
+
+/* Anchor variant used by the component */
+a.report-item {
+  text-decoration: none;
+  color: inherit;
+  border-radius: 6px;
+  transition: background-color 140ms ease;
+}
+
+a.report-item:hover {
+  background: #f7faf8;
 }
 
 .report-thumb {
@@ -775,9 +951,11 @@
   border-radius: 999px;
   font-size: 0.49rem;
   font-weight: 600;
+  text-transform: capitalize;
 }
 
 .status-pill.pending     { background: #fffbe3; color: #d97706; }
+.status-pill.reviewed    { background: #e0f2fe; color: #0284c7; }
 .status-pill.in-progress { background: #e0f2fe; color: #0284c7; }
 .status-pill.resolved    { background: #ecfdf5; color: #047857; }
 
