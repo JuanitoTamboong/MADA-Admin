@@ -394,13 +394,23 @@
   background: #f1f7f3;
 }
 
+/* Date dropdown — visible and interactive */
 .date-select {
-  padding: 3px 6px;
-  font-size: 0.6rem;
+  padding: 4px 8px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #1e293b;
   border-radius: 6px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #94a3b8;
   outline: none;
-  background-color: #f8fafc;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.date-select:hover,
+.date-select:focus {
+  border-color: #166c42;
+  color: #166c42;
 }
 
 /* ---------- CHARTS ROW ---------- */
@@ -413,9 +423,55 @@
 .chart-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
+.line-chart-svg {
+  width: 100%;
+  height: 150px;
+  overflow: visible;
+}
+
+.chart-grid path {
+  fill: none;
+  stroke: #eef2ef;
+  stroke-width: 1;
+}
+
+.chart-grid text {
+  fill: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.chart-area {
+  fill: rgba(22, 115, 66, 0.18);
+}
+
+.chart-line {
+  stroke: #16834d;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.line-chart-svg circle {
+  fill: #ffffff;
+  stroke: #16834d;
+  stroke-width: 2;
+}
+
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 26px;
+  font-size: 0.58rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+/* Small barchart variant (kept for compatibility) */
 .production-chart-note {
   margin: 0 0 10px;
   color: var(--text-muted);
@@ -468,47 +524,7 @@
   font-size: inherit;
 }
 
-.line-chart-svg {
-  width: 100%;
-  height: 120px;
-  overflow: visible;
-}
-
-.chart-grid path {
-  fill: none;
-  stroke: #e8efeb;
-  stroke-width: 1;
-}
-
-.chart-grid text {
-  fill: #7c8d83;
-  font-size: 9px;
-  font-family: inherit;
-}
-
-.chart-area {
-  fill: rgba(22, 115, 66, 0.12);
-}
-
-.chart-line {
-  stroke: #16834d;
-  stroke-width: 2;
-}
-
-.line-chart-svg circle {
-  fill: #fff;
-  stroke: #16834d;
-  stroke-width: 2;
-}
-
-.chart-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.56rem;
-  color: var(--text-muted);
-}
-
-/* ---------- EMPTY / LOADING / HELPER STATES ---------- */
+/* ---------- EMPTY / LOADING STATES ---------- */
 .chart-empty {
   display: flex;
   flex-direction: column;
@@ -559,72 +575,79 @@
   margin: 0;
 }
 
-/* ---------- DISTRIBUTION ---------- */
+/* ---------- DISTRIBUTION / DONUT ---------- */
 .distribution-body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   padding: 3px 2px 0;
+}
+
+.donut-chart-container {
+  flex-shrink: 0;
 }
 
 .donut-ring {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: conic-gradient(
-    #16834d 0% 32%,
-    #f4ad35 32% 56%,
-    #368bd6 56% 74%,
-    #8b75dc 74% 88%,
-    #e45c57 88% 100%
-  );
+  background: #eef2ef;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .donut-center {
-  width: 64px;
-  height: 64px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
-  background-color: white;
+  background-color: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 0 0 2px #ffffff;
 }
 
 .donut-number {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 800;
+  color: var(--text-dark);
+  line-height: 1;
 }
 
 .donut-label {
-  font-size: 0.52rem;
+  font-size: 0.5rem;
   color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .crop-legend {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.59rem;
+  gap: 6px;
+  font-size: 0.6rem;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  flex: 1;
 }
 
 .crop-legend li {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  color: #334155;
 }
 
 .crop-legend li b {
   margin-left: auto;
-  font-weight: 500;
+  color: var(--text-dark);
+  font-weight: 700;
 }
 
-/* Full-width legend — used when there is no donut chart */
 .crop-legend--full {
   width: 100%;
   padding: 0;
@@ -650,8 +673,8 @@
 }
 
 .dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex: 0 0 auto;
 }
@@ -726,6 +749,14 @@
   justify-content: center;
   font-size: 0.55rem;
   color: var(--primary-emerald);
+}
+
+/* Real avatar image (replaces initials when uploaded) */
+.table-avatar--img {
+  object-fit: cover;
+  background-color: #e2e8f0;
+  width: 22px;
+  height: 22px;
 }
 
 .status-badge {
@@ -862,7 +893,6 @@
   color: #475569;
 }
 
-/* Anchor variant of alert-item */
 .other-alerts a.alert-item {
   text-decoration: none;
   color: inherit;
@@ -874,7 +904,7 @@
   color: #166c42;
 }
 
-/* ---------- REPORTS (right column) ---------- */
+/* ---------- REPORTS ---------- */
 .reports-list {
   display: flex;
   flex-direction: column;
@@ -895,7 +925,6 @@
   border-bottom: 0;
 }
 
-/* Anchor variant used by the component */
 a.report-item {
   text-decoration: none;
   color: inherit;
@@ -916,10 +945,18 @@ a.report-item:hover {
   background-position: center;
 }
 
-.report-thumb.pest    { background-image: url('https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?q=80&w=150&auto=format&fit=crop'); }
-.report-thumb.water   { background-image: url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=150&auto=format&fit=crop'); }
-.report-thumb.disease { background-image: url('../assets/images/admin-farmers.jpg'); }
-.report-thumb.soil    { background-image: url('https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=150&auto=format&fit=crop'); }
+/* Real uploaded image */
+.report-thumb--img {
+  object-fit: cover;
+  background-color: #e2e8f0;
+}
+
+/* Placeholder shown when there's no uploaded image */
+.report-thumb--placeholder {
+  background-color: #eef2ef;
+  background-image:
+    linear-gradient(135deg, rgba(22, 115, 66, 0.06), rgba(22, 115, 66, 0.12));
+}
 
 .report-info {
   flex: 1;
@@ -943,6 +980,34 @@ a.report-item:hover {
   font-size: 0.49rem;
   color: #94a3b8;
   white-space: nowrap;
+}
+
+/* Meta line with farmer name + location */
+.report-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 0;
+  font-size: 0.54rem;
+  color: var(--text-muted);
+  min-width: 0;
+}
+
+.report-meta svg {
+  flex-shrink: 0;
+  color: #829188;
+}
+
+.report-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90px;
+}
+
+.report-meta-dot {
+  color: #cbd5e1;
+  max-width: none !important;
 }
 
 .status-pill {

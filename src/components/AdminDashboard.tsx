@@ -16,6 +16,7 @@ import {
   UserRound,
   MapPin,
   TrendingUp,
+  PieChart,
 } from 'lucide-react';
 import '../css/AdminDashboard.css';
 import { supabase } from '../supabase/supabase-client';
@@ -45,7 +46,11 @@ interface FarmerRow {
   id: string;
   full_name: string;
   address: string | null;
+  avatar_path: string | null;
+  status: 'active' | 'inactive' | null;
   created_at: string;
+  farmCount?: number;
+  totalHectares?: number;
 }
 
 interface ReportRow {
@@ -53,6 +58,10 @@ interface ReportRow {
   note: string | null;
   status: 'pending' | 'reviewed' | 'resolved';
   created_at: string;
+  image_path: string | null;
+  farmer_id: string;
+  farmerName?: string;
+  location?: string | null;
 }
 
 interface AnnouncementRow {
@@ -67,6 +76,19 @@ interface WeatherState {
   lowC: number;
   description: string;
 }
+
+interface DayPoint {
+  label: string;
+  value: number;
+}
+
+interface CropBucket {
+  crop: string;
+  count: number;
+  pct: number;
+}
+
+// ---------- helpers ----------
 
 function describeWeather(code: number): string {
   if (code === 0) return 'Clear sky';
@@ -105,6 +127,165 @@ function formatRelative(iso: string): string {
   });
 }
 
+const CROP_COLORS = [
+  '#16834d',
+  '#f4ad35',
+  '#368bd6',
+  '#8b75dc',
+  '#e45c57',
+  '#64748b',
+  '#0ea5b7',
+  '#ec4899',
+];
+
+function cropColorFor(index: number): string {
+  return CROP_COLORS[index % CROP_COLORS.length];
+}
+
+function buildLast7Days(timestamps: string[]): DayPoint[] {
+  const days: DayPoint[] = [];
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    days.push({
+      label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value: 0,
+    });
+  }
+
+  const start = new Date(now);
+  start.setDate(now.getDate() - 6);
+
+  for (const iso of timestamps) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) continue;
+    d.setHours(0, 0, 0, 0);
+    if (d < start) continue;
+    const idx = Math.round((d.getTime() - start.getTime()) / 86_400_000);
+    if (idx >= 0 && idx < 7) days[idx].value += 1;
+  }
+  return days;
+}
+
+// Sign many storage paths in one round-trip. Returns { path -> url }.
+async function signUrls(
+  bucket: 'profile-avatars' | 'pest-reports',
+  paths: string[],
+): Promise<Record<string, string>> {
+  const uniq = Array.from(new Set(paths.filter(Boolean)));
+  if (uniq.length === 0) return {};
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrls(uniq, 60 * 60); // 1 hour
+
+  if (error || !data) return {};
+
+  const map: Record<string, string> = {};
+  for (const row of data) {
+    if (row.path && row.signedUrl) map[row.path] = row.signedUrl;
+  }
+  return map;
+}
+
+// ---------- sub-components ----------
+
+function FarmRegistrationsChart({ data }: { data: DayPoint[] }) {
+  const W = 420;
+  const H = 150;
+  const padX = 34;
+  const padY = 18;
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const step = max <= 5 ? 1 : max <= 25 ? 5 : max <= 100 ? 25 : 50;
+  const yMax = Math.max(Math.ceil(max / step) * step, step);
+  const ticks = [0, yMax / 3, (2 * yMax) / 3, yMax];
+
+  const x = (i: number) =>
+    padX + (i * (W - 2 * padX)) / Math.max(data.length - 1, 1);
+  const y = (v: number) => H - padY - (v / yMax) * (H - 2 * padY);
+
+  const points = data.map((d, i) => ({ x: x(i), y: y(d.value) }));
+  const linePath = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+    .join(' ');
+  const areaPath =
+    `M ${points[0].x} ${H - padY} ` +
+    points.map((p) => `L ${p.x} ${p.y}`).join(' ') +
+    ` L ${points[points.length - 1].x} ${H - padY} Z`;
+
+  return (
+    <div className="chart-wrapper">
+      <svg viewBox={`0 0 ${W} ${H}`} className="line-chart-svg">
+        <defs>
+          <linearGradient id="chartAreaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#16834d" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#16834d" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        <g className="chart-grid">
+          {ticks.map((t, i) => {
+            const yy = y(t);
+            return (
+              <g key={i}>
+                <path d={`M ${padX} ${yy} H ${W - padX}`} />
+                <text x={padX - 6} y={yy + 3} textAnchor="end">
+                  {Math.round(t)}
+                </text>
+              </g>
+            );
+          })}
+        </g>
+
+        <path d={areaPath} fill="url(#chartAreaFill)" />
+        <path d={linePath} fill="none" className="chart-line" />
+        {points.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3.5" />
+        ))}
+      </svg>
+
+      <div className="chart-labels">
+        {data.map((d) => (
+          <span key={d.label}>{d.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CropDonut({ buckets }: { buckets: CropBucket[] }) {
+  let acc = 0;
+  const stops: string[] = [];
+  buckets.forEach((b, i) => {
+    const start = acc;
+    const end = acc + b.pct;
+    stops.push(`${cropColorFor(i)} ${start}% ${end}%`);
+    acc = end;
+  });
+  if (acc < 100) stops.push(`transparent ${acc}% 100%`);
+
+  const total = buckets.reduce((s, b) => s + b.count, 0);
+
+  return (
+    <div className="donut-chart-container">
+      <div
+        className="donut-ring"
+        style={{ background: `conic-gradient(${stops.join(', ')})` }}
+      >
+        <div className="donut-center">
+          <span className="donut-number">{total}</span>
+          <span className="donut-label">Total Farms</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- main component ----------
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activePage, setActivePage] = useState(
     () => window.location.hash.slice(1) || 'dashboard',
@@ -113,10 +294,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [logoutError, setLogoutError] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  // --- admin's own profile (for avatar + weather) ---
   const [profile, setProfile] = useState<FarmerProfile | null>(null);
 
-  // --- dashboard data ---
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,42 +303,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [totalReports, setTotalReports] = useState(0);
   const [totalFarms, setTotalFarms] = useState(0);
 
-  const [cropBreakdown, setCropBreakdown] = useState<{ crop: string; count: number }[]>([]);
+  const [cropBuckets, setCropBuckets] = useState<CropBucket[]>([]);
+  const [last7Farms, setLast7Farms] = useState<DayPoint[]>([]);
   const [recentFarmers, setRecentFarmers] = useState<FarmerRow[]>([]);
   const [recentReports, setRecentReports] = useState<ReportRow[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<AnnouncementRow[]>([]);
 
+  const [avatarUrls, setAvatarUrls] = useState<Record<string, string>>({});
+  const [reportImageUrls, setReportImageUrls] = useState<Record<string, string>>({});
+
   const [weather, setWeather] = useState<WeatherState | null>(null);
 
-  // --- hash routing ---
+  // ---------- routing ----------
   useEffect(() => {
-    const updateActivePage = () => {
+    const update = () =>
       setActivePage(window.location.hash.slice(1) || 'dashboard');
-    };
-    window.addEventListener('hashchange', updateActivePage);
-    return () => window.removeEventListener('hashchange', updateActivePage);
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
   }, []);
 
-  // --- profile dropdown close-on-outside ---
+  // ---------- dropdown ----------
   useEffect(() => {
     if (!isProfileMenuOpen) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!profileMenuRef.current?.contains(event.target as Node)) {
+    const onDoc = (e: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(e.target as Node)) {
         setIsProfileMenuOpen(false);
       }
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsProfileMenuOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsProfileMenuOpen(false);
     };
-    document.addEventListener('mousedown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('mousedown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
     };
   }, [isProfileMenuOpen]);
 
-  // --- fetch admin's own profile once ---
+  // ---------- admin profile ----------
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -179,7 +361,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, []);
 
-  // --- load dashboard data when dashboard is visible ---
+  // ---------- dashboard data ----------
   useEffect(() => {
     if (activePage !== 'dashboard') return;
     let cancelled = false;
@@ -193,10 +375,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           farmersRes,
           farmsRes,
           reportsRes,
-          cropRowsRes,
           recentFarmersRes,
           recentReportsRes,
           announcementsRes,
+          farmTimestampsRes,
+          farmCropsRes,
         ] = await Promise.all([
           supabase
             .from('farmers')
@@ -211,18 +394,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             .from('pest_reports')
             .select('*', { count: 'exact', head: true }),
 
-          supabase.from('farms').select('crop'),
-
           supabase
             .from('farmers')
-            .select('id, full_name, address, created_at')
+            .select('id, full_name, address, avatar_path, status, created_at')
             .eq('role', 'farmer')
             .order('created_at', { ascending: false })
             .limit(5),
 
           supabase
             .from('pest_reports')
-            .select('id, note, status, created_at')
+            .select('id, note, status, created_at, image_path, farmer_id')
             .order('created_at', { ascending: false })
             .limit(5),
 
@@ -231,6 +412,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             .select('id, title, created_at')
             .order('created_at', { ascending: false })
             .limit(3),
+
+          supabase
+            .from('farms')
+            .select('created_at')
+            .order('created_at', { ascending: true }),
+
+          supabase.from('farms').select('crop'),
         ]);
 
         if (cancelled) return;
@@ -239,10 +427,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           farmersRes.error ||
           farmsRes.error ||
           reportsRes.error ||
-          cropRowsRes.error ||
           recentFarmersRes.error ||
           recentReportsRes.error ||
-          announcementsRes.error;
+          announcementsRes.error ||
+          farmTimestampsRes.error ||
+          farmCropsRes.error;
 
         if (firstError) {
           setError(firstError.message);
@@ -254,21 +443,117 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         setTotalFarms(farmsRes.count ?? 0);
         setTotalReports(reportsRes.count ?? 0);
 
+        // Line chart data
+        const timestamps = (farmTimestampsRes.data ?? [])
+          .map((r) => r.created_at)
+          .filter((s): s is string => typeof s === 'string');
+        setLast7Farms(buildLast7Days(timestamps));
+
+        // Donut data
         const counts = new Map<string, number>();
-        for (const row of cropRowsRes.data ?? []) {
+        for (const row of farmCropsRes.data ?? []) {
           const key = (row.crop ?? 'Unknown').toString().trim() || 'Unknown';
           counts.set(key, (counts.get(key) ?? 0) + 1);
         }
-        setCropBreakdown(
-          Array.from(counts.entries())
-            .map(([crop, count]) => ({ crop, count }))
-            .sort((a, b) => b.count - a.count),
+        const totalCrops = Array.from(counts.values()).reduce((s, n) => s + n, 0);
+        const buckets: CropBucket[] = Array.from(counts.entries())
+          .map(([crop, count]) => ({
+            crop,
+            count,
+            pct: totalCrops === 0 ? 0 : (count / totalCrops) * 100,
+          }))
+          .sort((a, b) => b.count - a.count);
+        setCropBuckets(buckets);
+
+        // ---- Recent farmers: aggregate farms + sign avatars ----
+        const recentFarmerRows = (recentFarmersRes.data ?? []) as FarmerRow[];
+        const farmerIds = recentFarmerRows.map((f) => f.id);
+
+        let farmAggRows: { farmer_id: string; area_hectares: number }[] = [];
+        if (farmerIds.length > 0) {
+          const { data: farmsForFarmers } = await supabase
+            .from('farms')
+            .select('farmer_id, area_hectares')
+            .in('farmer_id', farmerIds);
+          farmAggRows = (farmsForFarmers ?? []) as {
+            farmer_id: string;
+            area_hectares: number;
+          }[];
+        }
+
+        const aggMap = new Map<string, { count: number; hectares: number }>();
+        for (const row of farmAggRows) {
+          const cur = aggMap.get(row.farmer_id) ?? { count: 0, hectares: 0 };
+          cur.count += 1;
+          cur.hectares += Number(row.area_hectares ?? 0);
+          aggMap.set(row.farmer_id, cur);
+        }
+
+        setRecentFarmers(
+          recentFarmerRows.map((f) => {
+            const agg = aggMap.get(f.id);
+            return {
+              ...f,
+              farmCount: agg?.count ?? 0,
+              totalHectares: agg?.hectares ?? 0,
+            };
+          }),
         );
 
-        setRecentFarmers((recentFarmersRes.data ?? []) as FarmerRow[]);
-        setRecentReports((recentReportsRes.data ?? []) as ReportRow[]);
-        setRecentAnnouncements((announcementsRes.data ?? []) as AnnouncementRow[]);
+        const avatars = await signUrls(
+          'profile-avatars',
+          recentFarmerRows
+            .map((f) => f.avatar_path ?? '')
+            .filter(Boolean),
+        );
+        if (cancelled) return;
+        setAvatarUrls(avatars);
 
+        // ---- Recent reports: farmer join + sign images ----
+        const recentReportRows = (recentReportsRes.data ?? []) as ReportRow[];
+        const reportFarmerIds = Array.from(
+          new Set(recentReportRows.map((r) => r.farmer_id)),
+        );
+
+        const farmerInfoById = new Map<
+          string,
+          { full_name: string; address: string | null }
+        >();
+        if (reportFarmerIds.length > 0) {
+          const { data: infoRows } = await supabase
+            .from('farmers')
+            .select('id, full_name, address')
+            .in('id', reportFarmerIds);
+
+          (infoRows ?? []).forEach((row) => {
+            farmerInfoById.set(row.id, {
+              full_name: row.full_name,
+              address: row.address,
+            });
+          });
+        }
+
+        setRecentReports(
+          recentReportRows.map((r) => {
+            const info = farmerInfoById.get(r.farmer_id);
+            return {
+              ...r,
+              farmerName: info?.full_name ?? 'Unknown farmer',
+              location: info?.address ?? null,
+            };
+          }),
+        );
+
+        const reportImages = await signUrls(
+          'pest-reports',
+          recentReportRows
+            .map((r) => r.image_path ?? '')
+            .filter(Boolean),
+        );
+        if (cancelled) return;
+        setReportImageUrls(reportImages);
+
+        setRecentAnnouncements((announcementsRes.data ?? []) as AnnouncementRow[]);
         setLoading(false);
       } catch (err) {
         if (cancelled) return;
@@ -282,7 +567,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, [activePage]);
 
-  // --- live weather for admin's address (only if it exists) ---
+  // ---------- weather ----------
   useEffect(() => {
     const address = profile?.address;
     if (!address) return;
@@ -313,7 +598,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           description: describeWeather(wx.current.weather_code),
         });
       } catch {
-        // silently skip — the card falls back to a link
+        // silent
       }
     })();
 
@@ -340,15 +625,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const cropTotal = cropBreakdown.reduce((s, c) => s + c.count, 0);
-  const maxCropCount = Math.max(...cropBreakdown.map((crop) => crop.count), 0);
+  const hasFarmActivity = last7Farms.some((d) => d.value > 0);
+  const cropTotal = cropBuckets.reduce((s, b) => s + b.count, 0);
 
   return (
     <PageLayout className="page-layout--dashboard">
       <SideNav activePage={activePage} />
 
       <div className="main-wrapper">
-        {/* TOPBAR */}
         <header className="topbar">
           <div className="search-bar">
             <Search size={18} className="search-icon" />
@@ -373,7 +657,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 className="user-profile"
                 onClick={() => {
                   setLogoutError('');
-                  setIsProfileMenuOpen((isOpen) => !isOpen);
+                  setIsProfileMenuOpen((o) => !o);
                 }}
                 type="button"
               >
@@ -447,7 +731,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             )}
 
             <div className="left-grid-column">
-              {/* HERO */}
               <section className="hero-banner">
                 <div className="hero-text-area">
                   <h2>Good morning, Admin!</h2>
@@ -496,7 +779,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </div>
               </section>
 
-              {/* QUICK ACTIONS */}
               <section className="quick-actions-bar">
                 <button
                   className="action-pill"
@@ -540,7 +822,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </button>
               </section>
 
-              {/* CHARTS ROW */}
               <div className="charts-row">
                 <div className="card-box chart-box">
                   <div className="card-header">
@@ -548,48 +829,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <TrendingUp size={18} className="title-icon" />
                       <h3>Farm Production Overview</h3>
                     </div>
+                    <select className="date-select" defaultValue="7">
+                      <option value="7">Last 7 Days</option>
+                    </select>
                   </div>
 
-                  <p className="production-chart-note">
-                    Registered farms by crop. Harvest quantities are not
-                    recorded in the available farm data.
-                  </p>
                   {loading ? (
                     <p className="chart-empty-text">Loading…</p>
-                  ) : cropBreakdown.length === 0 ? (
-                    <p className="chart-empty-text">
-                      No farm records available yet.
-                    </p>
+                  ) : !hasFarmActivity ? (
+                    <div className="chart-empty">
+                      <p>No farms added in the last 7 days.</p>
+                    </div>
                   ) : (
-                    <ul
-                      aria-label="Registered farms by crop"
-                      className="production-chart"
-                    >
-                      {cropBreakdown.map((crop) => (
-                        <li className="production-chart-row" key={crop.crop}>
-                          <span className="production-chart-label">
-                            {crop.crop}
-                          </span>
-                          <span className="production-chart-track">
-                            <span
-                              aria-hidden="true"
-                              className="production-chart-bar"
-                              style={{
-                                width: `${(crop.count / maxCropCount) * 100}%`,
-                              }}
-                            />
-                          </span>
-                          <b>{crop.count}</b>
-                        </li>
-                      ))}
-                    </ul>
+                    <FarmRegistrationsChart data={last7Farms} />
                   )}
                 </div>
 
                 <div className="card-box distribution-box">
                   <div className="card-header">
                     <div className="card-title">
-                      <Sprout size={18} className="title-icon" />
+                      <PieChart size={18} className="title-icon" />
                       <h3>Crop Distribution</h3>
                     </div>
                   </div>
@@ -602,32 +861,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         No farms registered yet.
                       </p>
                     ) : (
-                      <ul className="crop-legend crop-legend--full">
-                        {cropBreakdown.map((c) => {
-                          const pct = Math.round((c.count / cropTotal) * 100);
-                          return (
-                            <li key={c.crop}>
+                      <>
+                        <CropDonut buckets={cropBuckets} />
+                        <ul className="crop-legend">
+                          {cropBuckets.map((b, i) => (
+                            <li key={b.crop}>
                               <span
                                 className="dot"
-                                style={{
-                                  background: '#1b4d2e',
-                                  opacity: Math.max(0.35, pct / 100),
-                                }}
+                                style={{ background: cropColorFor(i) }}
                               />
-                              {c.crop}{' '}
-                              <b>
-                                {c.count} ({pct}%)
-                              </b>
+                              {b.crop}
+                              <b>{Math.round(b.pct)}%</b>
                             </li>
-                          );
-                        })}
-                      </ul>
+                          ))}
+                        </ul>
+                      </>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* BOTTOM ROW */}
               <div className="bottom-row">
                 <div className="card-box table-box">
                   <div className="card-header">
@@ -650,24 +903,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <table className="data-table">
                       <thead>
                         <tr>
+                          <th scope="col" className="col-num">#</th>
                           <th scope="col">Name</th>
                           <th scope="col">Location</th>
-                          <th scope="col">Joined</th>
+                          <th scope="col">Farm Size</th>
+                          <th scope="col">Status</th>
+                          <th scope="col" className="col-action">Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {recentFarmers.map((f) => (
-                          <tr key={f.id}>
-                            <td className="user-cell">
-                              <div className="table-avatar">
-                                {initialsFromName(f.full_name)}
-                              </div>
-                              <span>{f.full_name}</span>
-                            </td>
-                            <td>{f.address ?? '—'}</td>
-                            <td>{formatRelative(f.created_at)}</td>
-                          </tr>
-                        ))}
+                        {recentFarmers.map((f, idx) => {
+                          const avatar = f.avatar_path
+                            ? avatarUrls[f.avatar_path]
+                            : null;
+                          const sizeLabel =
+                            f.farmCount && f.farmCount > 0
+                              ? `${(f.totalHectares ?? 0).toFixed(1)} ha`
+                              : '—';
+                          const status = f.status ?? 'active';
+                          return (
+                            <tr key={f.id}>
+                              <td>{idx + 1}</td>
+                              <td className="user-cell">
+                                {avatar ? (
+                                  <img
+                                    src={avatar}
+                                    alt={f.full_name}
+                                    className="table-avatar table-avatar--img"
+                                  />
+                                ) : (
+                                  <div className="table-avatar">
+                                    {initialsFromName(f.full_name)}
+                                  </div>
+                                )}
+                                <span>{f.full_name}</span>
+                              </td>
+                              <td title={f.address ?? ''}>
+                                {f.address ?? '—'}
+                              </td>
+                              <td>{sizeLabel}</td>
+                              <td>
+                                <span className={`status-badge ${status}`}>
+                                  {status === 'active' ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                              <td className="col-action">
+                                <a className="view-btn" href="#farmers">
+                                  View
+                                </a>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -744,7 +1031,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
               </div>
             </div>
 
-            {/* RIGHT SIDEBAR */}
             <div className="right-grid-column">
               <div className="card-box right-card">
                 <div className="card-header">
@@ -763,22 +1049,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   ) : recentReports.length === 0 ? (
                     <p className="chart-empty-text">No reports yet.</p>
                   ) : (
-                    recentReports.map((r) => (
-                      <a className="report-item" key={r.id} href="#reports">
-                        <div className="report-info">
-                          <h4>
-                            {r.note && r.note.trim().length > 0
-                              ? r.note.slice(0, 40)
-                              : 'Report submitted'}
-                          </h4>
-                          <small>{formatRelative(r.created_at)}</small>
-                        </div>
-                        <span className={`status-pill ${r.status}`}>
-                          {r.status}
-                        </span>
-                        <ChevronRight size={15} className="report-arrow" />
-                      </a>
-                    ))
+                    recentReports.map((r) => {
+                      const img = r.image_path
+                        ? reportImageUrls[r.image_path]
+                        : null;
+                      return (
+                        <a className="report-item" key={r.id} href="#reports">
+                          {img ? (
+                            <img
+                              src={img}
+                              alt=""
+                              className="report-thumb report-thumb--img"
+                            />
+                          ) : (
+                            <div className="report-thumb report-thumb--placeholder" />
+                          )}
+
+                          <div className="report-info">
+                            <h4>{r.note?.trim() || 'Report submitted'}</h4>
+                            <p className="report-meta">
+                              <MapPin size={11} />
+                              <span>{r.farmerName ?? 'Unknown farmer'}</span>
+                              {r.location ? (
+                                <>
+                                  <span className="report-meta-dot">•</span>
+                                  <span>{r.location}</span>
+                                </>
+                              ) : null}
+                            </p>
+                            <small>{formatRelative(r.created_at)}</small>
+                          </div>
+
+                          <span className={`status-pill ${r.status}`}>
+                            {r.status}
+                          </span>
+                          <ChevronRight size={15} className="report-arrow" />
+                        </a>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -797,7 +1105,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <div>
                       <span className="insight-label">Crops tracked</span>
                       <span className="insight-val">
-                        {loading ? '—' : cropBreakdown.length}
+                        {loading ? '—' : cropBuckets.length}
                       </span>
                     </div>
                   </div>

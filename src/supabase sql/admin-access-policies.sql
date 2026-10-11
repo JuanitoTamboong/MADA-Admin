@@ -1,7 +1,8 @@
 -- =========================================================
 -- 009 — Admin access policies
 -- Grants admins read access to every farmer-owned table,
--- plus update on pest_reports and read on storage images.
+-- update on pest_reports, and read on both storage buckets
+-- (pest-reports + profile-avatars).
 -- Requires 008 to have run first.
 -- Safe to re-run.
 -- =========================================================
@@ -79,8 +80,10 @@ create policy "Admins update pest reports"
   with check (public.is_admin());
 
 -- ---------------------------------------------------------
--- 3. Storage — admins read all pest-report images
+-- 3. Storage — admins read images from both buckets
 -- ---------------------------------------------------------
+
+-- Pest-report photos
 drop policy if exists "Admins read all pest images" on storage.objects;
 create policy "Admins read all pest images"
   on storage.objects
@@ -91,17 +94,34 @@ create policy "Admins read all pest images"
     and public.is_admin()
   );
 
+-- Farmer profile avatars
+drop policy if exists "Admins read all profile avatars" on storage.objects;
+create policy "Admins read all profile avatars"
+  on storage.objects
+  for select
+  to authenticated
+  using (
+    bucket_id = 'profile-avatars'
+    and public.is_admin()
+  );
+
 -- ---------------------------------------------------------
 -- 4. Verify
 -- ---------------------------------------------------------
-select polname
+select polname, polrelid::regclass as table_name
 from pg_policy
-where polrelid in (
-  'public.farmers'::regclass,
-  'public.farms'::regclass,
-  'public.tasks'::regclass,
-  'public.farm_expenses'::regclass,
-  'public.pest_reports'::regclass
-)
-  and polname like 'Admins %'
-order by polrelid::regclass::text, polname;
+where (
+    polrelid in (
+      'public.farmers'::regclass,
+      'public.farms'::regclass,
+      'public.tasks'::regclass,
+      'public.farm_expenses'::regclass,
+      'public.pest_reports'::regclass
+    )
+    and polname like 'Admins %'
+  )
+  or (
+    polrelid = 'storage.objects'::regclass
+    and polname like 'Admins read%'
+  )
+order by polrelid, polname;
