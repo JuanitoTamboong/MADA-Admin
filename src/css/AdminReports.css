@@ -152,13 +152,15 @@
   color: #528269;
 }
 
-/* Filters */
+/* Filters — search + barangay + status + 2 dates + clear */
 .reports-filters {
   display: grid;
   grid-template-columns:
-    minmax(190px, 1.45fr)
-    repeat(4, minmax(115px, 1fr))
-    repeat(2, minmax(120px, 0.9fr))
+    minmax(190px, 1.6fr)
+    minmax(130px, 1fr)
+    minmax(130px, 1fr)
+    minmax(120px, 0.9fr)
+    minmax(120px, 0.9fr)
     auto;
   align-items: end;
   gap: 8px;
@@ -179,7 +181,7 @@
   pointer-events: none;
 }
 
-/* Base styling for all filter/search/date inputs */
+/* Base styling for all filter/search/date/form inputs */
 .reports-search input,
 .reports-filter-control input,
 .reports-filter-control select,
@@ -706,7 +708,7 @@
 
 .reports-review-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(0, 1.3fr);
   gap: 10px;
 }
 
@@ -893,15 +895,15 @@
   }
 
   .reports-filters {
-    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
   }
 
   .reports-search {
-    grid-column: span 2;
+    grid-column: span 3;
   }
 
   .reports-clear-filters {
-    justify-self: start;
+    justify-self: end;
   }
 }
 
@@ -926,6 +928,10 @@
   .reports-clear-filters {
     grid-column: 1 / -1;
     justify-self: end;
+  }
+
+  .reports-review-controls {
+    grid-template-columns: 1fr;
   }
 
   .reports-detail-facts {
