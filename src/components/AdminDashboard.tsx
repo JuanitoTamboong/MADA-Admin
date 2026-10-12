@@ -68,6 +68,7 @@ interface AnnouncementRow {
   id: string;
   title: string;
   created_at: string;
+  image_url: string | null;
 }
 
 interface WeatherState {
@@ -409,7 +410,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
           supabase
             .from('announcements')
-            .select('id, title, created_at')
+            .select('id, title, created_at, image_url')
             .order('created_at', { ascending: false })
             .limit(3),
 
@@ -1162,14 +1163,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     </p>
                   ) : (
                     recentAnnouncements.map((a) => (
-                      <div className="announcement-item" key={a.id}>
-                        <div className="announcement-icon-badge green">
+                      <div className="dash-announcement-item" key={a.id}>
+                        <div className="dash-announcement-badge green">
                           <Megaphone size={14} />
                         </div>
-                        <div className="announcement-info">
+
+                        <div className="dash-announcement-info">
                           <h4>{a.title}</h4>
                           <p>{formatRelative(a.created_at)}</p>
                         </div>
+
+                        {a.image_url ? (
+                          <img
+                            className="dash-announcement-thumb"
+                            src={a.image_url}
+                            alt=""
+                            loading="lazy"
+                          />
+                        ) : null}
                       </div>
                     ))
                   )}
