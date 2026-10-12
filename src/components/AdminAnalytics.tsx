@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
   CalendarDays,
   FileText,
   MapPin,
@@ -42,6 +44,11 @@ interface ReportRow {
   created_at: string;
 }
 
+interface SeriesPoint {
+  label: string;
+  value: number;
+}
+
 function daysAgoIso(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -52,18 +59,14 @@ function monthLabel(d: Date): string {
   return d.toLocaleDateString(undefined, { month: 'short' });
 }
 
-// Build a 6-month series from a list of {created_at} timestamps.
-function buildMonthlySeries(
-  rows: { created_at: string }[],
-): { label: string; value: number }[] {
+function buildMonthlySeries(rows: { created_at: string }[]): SeriesPoint[] {
   const now = new Date();
-  const months: { label: string; value: number }[] = [];
+  const months: SeriesPoint[] = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     months.push({ label: monthLabel(d), value: 0 });
   }
   const firstMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-
   for (const row of rows) {
     const d = new Date(row.created_at);
     if (Number.isNaN(d.getTime()) || d < firstMonth) continue;
@@ -75,12 +78,22 @@ function buildMonthlySeries(
   return months;
 }
 
-// Simple SVG line chart
+function percentChange(series: SeriesPoint[]): number | null {
+  if (series.length < 2) return null;
+  const first = series[0].value;
+  const last = series[series.length - 1].value;
+  if (first === 0 && last === 0) return null;
+  if (first === 0) return 100;
+  return Math.round(((last - first) / first) * 100);
+}
+
+// ---------------- SVG CHART COMPONENTS ----------------
+
 function LineChart({
   data,
   color = '#16834d',
 }: {
-  data: { label: string; value: number }[];
+  data: SeriesPoint[];
   color?: string;
 }) {
   const W = 420;
@@ -148,14 +161,13 @@ function LineChart({
   );
 }
 
-// Simple donut chart built from conic-gradient
 function Donut({
   data,
   colors,
   centerLabel,
   centerValue,
 }: {
-  data: { label: string; value: number }[];
+  data: SeriesPoint[];
   colors: string[];
   centerLabel: string;
   centerValue: number;
@@ -183,20 +195,26 @@ function Donut({
         </div>
       </div>
       <ul className="analytics-donut-legend">
-        {data.map((d, i) => (
-          <li key={d.label}>
-            <span
-              className="analytics-donut-dot"
-              style={{ background: colors[i % colors.length] }}
-            />
-            <span>{d.label}</span>
-            <b>{d.value}</b>
-          </li>
-        ))}
+        {data.map((d, i) => {
+          const pct = total === 0 ? 0 : Math.round((d.value / total) * 100);
+          return (
+            <li key={d.label}>
+              <span
+                className="analytics-donut-dot"
+                style={{ background: colors[i % colors.length] }}
+              />
+              <span>{d.label}</span>
+              <em>{pct}%</em>
+              <b>{d.value}</b>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
+
+// ---------------- MAIN ----------------
 
 const AdminAnalytics = () => {
   const [farmers, setFarmers] = useState<FarmerRow[]>([]);
@@ -219,19 +237,15 @@ const AdminAnalytics = () => {
         .select('id, full_name, address, created_at')
         .eq('role', 'farmer')
         .order('created_at', { ascending: false }),
-
       supabase
         .from('farms')
         .select('id, farmer_id, crop, area_hectares, created_at'),
-
       supabase
         .from('pest_reports')
         .select('id, farmer_id, status, created_at'),
     ]);
 
-    const firstError =
-      farmersRes.error || farmsRes.error || reportsRes.error;
-
+    const firstError = farmersRes.error || farmsRes.error || reportsRes.error;
     if (firstError) {
       setError(firstError.message);
       setFarmers([]);
@@ -253,19 +267,11 @@ const AdminAnalytics = () => {
 
   const barangays = useMemo(
     () =>
-      [
-        ...new Set(
-          farmers.map((f) => (f.address ?? '').trim()).filter(Boolean),
-        ),
-      ].sort(),
+      [...new Set(farmers.map((f) => (f.address ?? '').trim()).filter(Boolean))].sort(),
     [farmers],
   );
-
   const crops = useMemo(
-    () =>
-      [
-        ...new Set(farms.map((f) => (f.crop ?? '').trim()).filter(Boolean)),
-      ].sort(),
+    () => [...new Set(farms.map((f) => (f.crop ?? '').trim()).filter(Boolean))].sort(),
     [farms],
   );
 
@@ -275,53 +281,42 @@ const AdminAnalytics = () => {
     setDateRange('all');
   };
 
-  const cutoffIso =
-    dateRange === 'all' ? null : daysAgoIso(Number(dateRange));
+  const cutoffIso = dateRange === 'all' ? null : daysAgoIso(Number(dateRange));
 
-  // ---- Apply filters ----
-
-  const filteredFarmers = useMemo(() => {
-    return farmers.filter((f) => {
-      const matchesBarangay =
-        barangayFilter === all || (f.address ?? '') === barangayFilter;
-      const matchesDate = !cutoffIso || f.created_at >= cutoffIso;
-      return matchesBarangay && matchesDate;
-    });
-  }, [farmers, barangayFilter, cutoffIso]);
+  const filteredFarmers = useMemo(
+    () =>
+      farmers.filter((f) => {
+        const okBrgy = barangayFilter === all || (f.address ?? '') === barangayFilter;
+        const okDate = !cutoffIso || f.created_at >= cutoffIso;
+        return okBrgy && okDate;
+      }),
+    [farmers, barangayFilter, cutoffIso],
+  );
 
   const filteredFarms = useMemo(() => {
-    const visibleFarmerIds = new Set(filteredFarmers.map((f) => f.id));
+    const visible = new Set(filteredFarmers.map((f) => f.id));
     return farms.filter((farm) => {
-      const matchesCrop =
-        cropFilter === all || (farm.crop ?? '') === cropFilter;
-      const matchesFarmer = visibleFarmerIds.has(farm.farmer_id);
-      const matchesDate = !cutoffIso || farm.created_at >= cutoffIso;
-      return matchesCrop && matchesFarmer && matchesDate;
+      const okCrop = cropFilter === all || (farm.crop ?? '') === cropFilter;
+      const okFarmer = visible.has(farm.farmer_id);
+      const okDate = !cutoffIso || farm.created_at >= cutoffIso;
+      return okCrop && okFarmer && okDate;
     });
   }, [farms, filteredFarmers, cropFilter, cutoffIso]);
 
   const filteredReports = useMemo(() => {
-    const visibleFarmerIds = new Set(filteredFarmers.map((f) => f.id));
+    const visible = new Set(filteredFarmers.map((f) => f.id));
     return reports.filter((r) => {
-      const matchesFarmer = visibleFarmerIds.has(r.farmer_id);
-      const matchesDate = !cutoffIso || r.created_at >= cutoffIso;
-      return matchesFarmer && matchesDate;
+      const okFarmer = visible.has(r.farmer_id);
+      const okDate = !cutoffIso || r.created_at >= cutoffIso;
+      return okFarmer && okDate;
     });
   }, [reports, filteredFarmers, cutoffIso]);
 
-  // ---- Derived metrics ----
-
   const totalFarmers = filteredFarmers.length;
   const totalFarms = filteredFarms.length;
-  const totalArea = filteredFarms.reduce(
-    (sum, f) => sum + Number(f.area_hectares ?? 0),
-    0,
-  );
+  const totalArea = filteredFarms.reduce((s, f) => s + Number(f.area_hectares ?? 0), 0);
   const totalReports = filteredReports.length;
-
   const avgFarmSize = totalFarms === 0 ? 0 : totalArea / totalFarms;
-
-  // ---- Groupings ----
 
   const farmersByBarangay = useMemo(() => {
     const counts = new Map<string, number>();
@@ -360,11 +355,7 @@ const AdminAnalytics = () => {
     const counts = new Map<string, number>();
     filteredReports.forEach((r) => {
       const key =
-        r.status === 'resolved'
-          ? 'Resolved'
-          : r.status === 'reviewed'
-            ? 'Reviewed'
-            : 'Pending';
+        r.status === 'resolved' ? 'Resolved' : r.status === 'reviewed' ? 'Reviewed' : 'Pending';
       counts.set(key, (counts.get(key) ?? 0) + 1);
     });
     return ['Pending', 'Reviewed', 'Resolved'].map((label) => ({
@@ -373,26 +364,12 @@ const AdminAnalytics = () => {
     }));
   }, [filteredReports]);
 
-  const reportsMonthly = useMemo(
-    () => buildMonthlySeries(filteredReports),
-    [filteredReports],
-  );
+  const farmersMonthly = useMemo(() => buildMonthlySeries(filteredFarmers), [filteredFarmers]);
+  const farmsMonthly = useMemo(() => buildMonthlySeries(filteredFarms), [filteredFarms]);
+  const reportsMonthly = useMemo(() => buildMonthlySeries(filteredReports), [filteredReports]);
 
-  const farmsMonthly = useMemo(
-    () => buildMonthlySeries(filteredFarms),
-    [filteredFarms],
-  );
-
-  const farmersMonthly = useMemo(
-    () => buildMonthlySeries(filteredFarmers),
-    [filteredFarmers],
-  );
-
-  // Farm size distribution
   const sizeBuckets = useMemo(() => {
-    let small = 0,
-      medium = 0,
-      large = 0;
+    let small = 0, medium = 0, large = 0;
     filteredFarms.forEach((f) => {
       const a = Number(f.area_hectares ?? 0);
       if (a <= 1) small += 1;
@@ -408,16 +385,15 @@ const AdminAnalytics = () => {
 
   const topBarangay = farmersByBarangay[0]?.label ?? '—';
   const topCrop = areaByCrop[0]?.label ?? '—';
-  const resolvedCount =
-    reportsByStatus.find((r) => r.label === 'Resolved')?.value ?? 0;
-  const resolutionRate =
-    totalReports === 0
-      ? 0
-      : Math.round((resolvedCount / totalReports) * 100);
+  const resolvedCount = reportsByStatus.find((r) => r.label === 'Resolved')?.value ?? 0;
+  const resolutionRate = totalReports === 0 ? 0 : Math.round((resolvedCount / totalReports) * 100);
+
+  const farmersDelta = percentChange(farmersMonthly);
+  const farmsDelta = percentChange(farmsMonthly);
+  const reportsDelta = percentChange(reportsMonthly);
 
   const barangayMax = Math.max(...farmersByBarangay.map((r) => r.value), 1);
   const cropMax = Math.max(...areaByCrop.map((r) => r.value), 1);
-  const sizeMax = Math.max(...sizeBuckets.map((r) => r.value), 1);
   const cropMixTotal = cropMix.reduce((s, r) => s + r.value, 0);
 
   const hasAnyData = totalFarmers > 0 || totalFarms > 0 || totalReports > 0;
@@ -429,10 +405,7 @@ const AdminAnalytics = () => {
         <div>
           <p className="analytics-eyebrow">PLAN AGRICULTURAL SUPPORT</p>
           <h1>Analytics</h1>
-          <p>
-            Live view of farmer coverage, crop area, and incoming farm
-            reports.
-          </p>
+          <p>Live view of farmer coverage, crop area, and incoming farm reports.</p>
         </div>
         <span className="analytics-heading-icon">
           <TrendingUp size={23} />
@@ -440,154 +413,122 @@ const AdminAnalytics = () => {
       </header>
 
       {!hasAnyData && !loading && (
-        <section
-          className="analytics-notice"
-          role="status"
-          aria-live="polite"
-        >
+        <section className="analytics-notice" role="status" aria-live="polite">
           <span className="analytics-notice-icon">
             <AlertCircle size={16} />
           </span>
           <div>
             <strong>No data yet</strong>
-            <span>
-              Analytics will appear here once farmers register and submit
-              farm records.
-            </span>
+            <span>Analytics will appear here once farmers register and submit farm records.</span>
           </div>
         </section>
       )}
 
-      {error && (
-        <p className="admin-error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <p className="admin-error" role="alert">{error}</p>}
 
       {/* FILTERS */}
       <section aria-label="Analytics filters" className="analytics-filters">
         <label>
-          <span>
-            <CalendarDays size={14} /> Date range
-          </span>
-          <select
-            onChange={(event) => setDateRange(event.target.value)}
-            value={dateRange}
-          >
-            {dateRanges.map((range) => (
-              <option key={range.value} value={range.value}>
-                {range.label}
-              </option>
+          <span><CalendarDays size={14} /> Date range</span>
+          <select onChange={(e) => setDateRange(e.target.value)} value={dateRange}>
+            {dateRanges.map((r) => (
+              <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
         </label>
-
         <label>
-          <span>
-            <MapPin size={14} /> Barangay
-          </span>
-          <select
-            onChange={(event) => setBarangayFilter(event.target.value)}
-            value={barangayFilter}
-          >
+          <span><MapPin size={14} /> Barangay</span>
+          <select onChange={(e) => setBarangayFilter(e.target.value)} value={barangayFilter}>
             <option value={all}>All barangays</option>
-            {barangays.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
+            {barangays.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
         </label>
-
         <label>
-          <span>
-            <Sprout size={14} /> Crop
-          </span>
-          <select
-            onChange={(event) => setCropFilter(event.target.value)}
-            value={cropFilter}
-          >
+          <span><Sprout size={14} /> Crop</span>
+          <select onChange={(e) => setCropFilter(e.target.value)} value={cropFilter}>
             <option value={all}>All crops</option>
-            {crops.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            {crops.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-
-        <button
-          className="analytics-reset"
-          onClick={resetFilters}
-          type="button"
-        >
+        <button className="analytics-reset" onClick={resetFilters} type="button">
           <RefreshCw size={13} /> Reset
         </button>
       </section>
 
-      {/* METRICS */}
+      {/* KPI ROW */}
       <section aria-label="Filtered summary" className="analytics-metrics">
         <article className="analytics-metric">
-          <span className="analytics-metric-icon analytics-metric-icon--green">
-            <Users size={18} />
-          </span>
+          <span className="analytics-metric-icon analytics-metric-icon--green"><Users size={18} /></span>
           <div>
             <span>Farmers in registry</span>
             <strong>{loading ? '…' : totalFarmers}</strong>
-            <small>Matching current filters</small>
+            <small className="analytics-metric-trend">
+              {farmersDelta === null ? (
+                <span className="analytics-trend-flat">—</span>
+              ) : farmersDelta >= 0 ? (
+                <span className="analytics-trend-up"><ArrowUpRight size={12} /> +{farmersDelta}%</span>
+              ) : (
+                <span className="analytics-trend-down"><ArrowDownRight size={12} /> {farmersDelta}%</span>
+              )}
+            </small>
           </div>
         </article>
 
         <article className="analytics-metric">
-          <span className="analytics-metric-icon analytics-metric-icon--blue">
-            <Sprout size={18} />
-          </span>
+          <span className="analytics-metric-icon analytics-metric-icon--blue"><Sprout size={18} /></span>
           <div>
             <span>Farm records</span>
             <strong>{loading ? '…' : totalFarms}</strong>
-            <small>Farms belonging to those farmers</small>
+            <small className="analytics-metric-trend">
+              {farmsDelta === null ? (
+                <span className="analytics-trend-flat">—</span>
+              ) : farmsDelta >= 0 ? (
+                <span className="analytics-trend-up"><ArrowUpRight size={12} /> +{farmsDelta}%</span>
+              ) : (
+                <span className="analytics-trend-down"><ArrowDownRight size={12} /> {farmsDelta}%</span>
+              )}
+            </small>
           </div>
         </article>
 
         <article className="analytics-metric">
-          <span className="analytics-metric-icon analytics-metric-icon--amber">
-            <TrendingUp size={18} />
-          </span>
+          <span className="analytics-metric-icon analytics-metric-icon--amber"><TrendingUp size={18} /></span>
           <div>
             <span>Planted area</span>
             <strong>{loading ? '…' : `${totalArea.toFixed(1)} ha`}</strong>
-            <small>Sum of farm areas in current filter</small>
+            <small>avg {avgFarmSize.toFixed(2)} ha / farm</small>
           </div>
         </article>
 
         <article className="analytics-metric">
-          <span className="analytics-metric-icon analytics-metric-icon--purple">
-            <FileText size={18} />
-          </span>
+          <span className="analytics-metric-icon analytics-metric-icon--purple"><FileText size={18} /></span>
           <div>
             <span>Farmer reports</span>
             <strong>{loading ? '…' : totalReports}</strong>
-            <small>Pest and disease reports submitted</small>
+            <small className="analytics-metric-trend">
+              {reportsDelta === null ? (
+                <span className="analytics-trend-flat">{resolutionRate}% resolved</span>
+              ) : reportsDelta >= 0 ? (
+                <span className="analytics-trend-up"><ArrowUpRight size={12} /> +{reportsDelta}%</span>
+              ) : (
+                <span className="analytics-trend-down"><ArrowDownRight size={12} /> {reportsDelta}%</span>
+              )}
+            </small>
           </div>
         </article>
       </section>
 
-      {/* QUICK INSIGHTS */}
+      {/* INSIGHTS ROW */}
       <section aria-label="Quick insights" className="analytics-insights">
         <article className="analytics-insight">
           <span>Top barangay</span>
           <strong>{loading ? '…' : topBarangay}</strong>
-          <small>
-            {farmersByBarangay[0]?.value ?? 0} farmer
-            {(farmersByBarangay[0]?.value ?? 0) === 1 ? '' : 's'}
-          </small>
+          <small>{farmersByBarangay[0]?.value ?? 0} farmer{(farmersByBarangay[0]?.value ?? 0) === 1 ? '' : 's'}</small>
         </article>
         <article className="analytics-insight">
           <span>Top crop by area</span>
           <strong>{loading ? '…' : topCrop}</strong>
-          <small>
-            {(areaByCrop[0]?.value ?? 0).toFixed(1)} ha
-          </small>
+          <small>{(areaByCrop[0]?.value ?? 0).toFixed(1)} ha</small>
         </article>
         <article className="analytics-insight">
           <span>Average farm size</span>
@@ -597,23 +538,37 @@ const AdminAnalytics = () => {
         <article className="analytics-insight">
           <span>Report resolution rate</span>
           <strong>{loading ? '…' : `${resolutionRate}%`}</strong>
-          <small>
-            {resolvedCount} of {totalReports} resolved
-          </small>
+          <small>{resolvedCount} of {totalReports} resolved</small>
         </article>
       </section>
 
-      {/* ROW 1: Barangay + Crop area */}
-      <div className="analytics-chart-grid">
+      {/* ROW A — Wide trend + barangay ranking */}
+      <div className="analytics-row analytics-row--a">
+        <section aria-label="New farmers per month" className="analytics-card">
+          <header className="analytics-card-heading">
+            <div>
+              <h2>New farmers per month</h2>
+              <p>Registrations over the last 6 months.</p>
+            </div>
+            <span className="analytics-unit-label">Farmers</span>
+          </header>
+          {loading ? (
+            <p className="analytics-no-data">Loading…</p>
+          ) : farmersMonthly.every((m) => m.value === 0) ? (
+            <p className="analytics-no-data">No registrations in the last 6 months.</p>
+          ) : (
+            <LineChart data={farmersMonthly} color="#16834d" />
+          )}
+        </section>
+
         <section aria-label="Farmers by barangay" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
               <h2>Farmers by barangay</h2>
-              <p>Count of registered farmers per address on file.</p>
+              <p>Top barangays by registered farmers.</p>
             </div>
             <span className="analytics-unit-label">Farmers</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : farmersByBarangay.length === 0 ? (
@@ -624,10 +579,7 @@ const AdminAnalytics = () => {
                 <li key={row.label}>
                   <span className="analytics-bar-label">{row.label}</span>
                   <span className="analytics-bar-track">
-                    <span
-                      className="analytics-bar-fill"
-                      style={{ width: `${(row.value / barangayMax) * 100}%` }}
-                    />
+                    <span className="analytics-bar-fill" style={{ width: `${(row.value / barangayMax) * 100}%` }} />
                   </span>
                   <b>{row.value}</b>
                 </li>
@@ -635,16 +587,18 @@ const AdminAnalytics = () => {
             </ul>
           )}
         </section>
+      </div>
 
+      {/* ROW B — Crop area + crop mix + donut */}
+      <div className="analytics-row analytics-row--b">
         <section aria-label="Planted area by crop" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
               <h2>Planted area by crop</h2>
-              <p>Total hectares per crop across matching farms.</p>
+              <p>Total hectares per crop.</p>
             </div>
             <span className="analytics-unit-label">ha</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : areaByCrop.length === 0 ? (
@@ -655,10 +609,7 @@ const AdminAnalytics = () => {
                 <li key={row.label}>
                   <span className="analytics-bar-label">{row.label}</span>
                   <span className="analytics-bar-track">
-                    <span
-                      className="analytics-bar-fill analytics-bar-fill--amber"
-                      style={{ width: `${(row.value / cropMax) * 100}%` }}
-                    />
+                    <span className="analytics-bar-fill analytics-bar-fill--amber" style={{ width: `${(row.value / cropMax) * 100}%` }} />
                   </span>
                   <b>{row.value.toFixed(1)}</b>
                 </li>
@@ -666,19 +617,42 @@ const AdminAnalytics = () => {
             </ul>
           )}
         </section>
-      </div>
 
-      {/* ROW 2: Donut + Crop mix */}
-      <div className="analytics-chart-grid">
+        <section aria-label="Crop mix" className="analytics-card">
+          <header className="analytics-card-heading">
+            <div>
+              <h2>Crop mix</h2>
+              <p>Share of farms per crop.</p>
+            </div>
+            <span className="analytics-unit-label">Farms</span>
+          </header>
+          {loading ? (
+            <p className="analytics-no-data">Loading…</p>
+          ) : cropMix.length === 0 ? (
+            <p className="analytics-no-data">No crops match these filters.</p>
+          ) : (
+            <ul className="analytics-pill-list">
+              {cropMix.map((row) => {
+                const pct = cropMixTotal === 0 ? 0 : Math.round((row.value / cropMixTotal) * 100);
+                return (
+                  <li key={row.label}>
+                    <span className="analytics-pill">{row.label}</span>
+                    <span className="analytics-pill-count">{row.value} <em>({pct}%)</em></span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
         <section aria-label="Reports by status" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
               <h2>Reports by status</h2>
-              <p>Distribution of farmer reports across workflow stages.</p>
+              <p>Distribution across the workflow.</p>
             </div>
             <span className="analytics-unit-label">Reports</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : totalReports === 0 ? (
@@ -692,63 +666,10 @@ const AdminAnalytics = () => {
             />
           )}
         </section>
-
-        <section aria-label="Crop mix" className="analytics-card">
-          <header className="analytics-card-heading">
-            <div>
-              <h2>Crop mix</h2>
-              <p>Share of farms growing each crop.</p>
-            </div>
-            <span className="analytics-unit-label">Farms</span>
-          </header>
-
-          {loading ? (
-            <p className="analytics-no-data">Loading…</p>
-          ) : cropMix.length === 0 ? (
-            <p className="analytics-no-data">No crops match these filters.</p>
-          ) : (
-            <ul className="analytics-pill-list">
-              {cropMix.map((row) => {
-                const pct =
-                  cropMixTotal === 0
-                    ? 0
-                    : Math.round((row.value / cropMixTotal) * 100);
-                return (
-                  <li key={row.label}>
-                    <span className="analytics-pill">
-                      {row.label}
-                    </span>
-                    <span className="analytics-pill-count">
-                      {row.value} <em>({pct}%)</em>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
       </div>
 
-      {/* ROW 3: Monthly series */}
-      <div className="analytics-chart-grid">
-        <section aria-label="New farmers per month" className="analytics-card">
-          <header className="analytics-card-heading">
-            <div>
-              <h2>New farmers per month</h2>
-              <p>Registrations over the last 6 months.</p>
-            </div>
-            <span className="analytics-unit-label">Farmers</span>
-          </header>
-
-          {loading ? (
-            <p className="analytics-no-data">Loading…</p>
-          ) : farmersMonthly.every((m) => m.value === 0) ? (
-            <p className="analytics-no-data">No registrations in the last 6 months.</p>
-          ) : (
-            <LineChart data={farmersMonthly} color="#16834d" />
-          )}
-        </section>
-
+      {/* ROW C — New farms + reports per month + size distribution */}
+      <div className="analytics-row analytics-row--c">
         <section aria-label="New farms per month" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
@@ -757,7 +678,6 @@ const AdminAnalytics = () => {
             </div>
             <span className="analytics-unit-label">Farms</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : farmsMonthly.every((m) => m.value === 0) ? (
@@ -766,19 +686,15 @@ const AdminAnalytics = () => {
             <LineChart data={farmsMonthly} color="#368bd6" />
           )}
         </section>
-      </div>
 
-      {/* ROW 4: Reports monthly + Size distribution */}
-      <div className="analytics-chart-grid">
         <section aria-label="Reports per month" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
               <h2>Reports per month</h2>
-              <p>Farmer reports submitted over the last 6 months.</p>
+              <p>Reports submitted in the last 6 months.</p>
             </div>
             <span className="analytics-unit-label">Reports</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : reportsMonthly.every((m) => m.value === 0) ? (
@@ -788,36 +704,32 @@ const AdminAnalytics = () => {
           )}
         </section>
 
-        <section
-          aria-label="Farm size distribution"
-          className="analytics-card"
-        >
+        <section aria-label="Farm size distribution" className="analytics-card">
           <header className="analytics-card-heading">
             <div>
               <h2>Farm size distribution</h2>
-              <p>How many farms fall into each size bracket.</p>
+              <p>Farms per size bracket.</p>
             </div>
             <span className="analytics-unit-label">Farms</span>
           </header>
-
           {loading ? (
             <p className="analytics-no-data">Loading…</p>
           ) : totalFarms === 0 ? (
             <p className="analytics-no-data">No farms match these filters.</p>
           ) : (
             <ul className="analytics-bar-list">
-              {sizeBuckets.map((row) => (
-                <li key={row.label}>
-                  <span className="analytics-bar-label">{row.label}</span>
-                  <span className="analytics-bar-track">
-                    <span
-                      className="analytics-bar-fill analytics-bar-fill--blue"
-                      style={{ width: `${(row.value / sizeMax) * 100}%` }}
-                    />
-                  </span>
-                  <b>{row.value}</b>
-                </li>
-              ))}
+              {sizeBuckets.map((row) => {
+                const total = sizeBuckets.reduce((s, b) => s + b.value, 0) || 1;
+                return (
+                  <li key={row.label}>
+                    <span className="analytics-bar-label">{row.label}</span>
+                    <span className="analytics-bar-track">
+                      <span className="analytics-bar-fill analytics-bar-fill--blue" style={{ width: `${(row.value / total) * 100}%` }} />
+                    </span>
+                    <b>{row.value}</b>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -825,13 +737,9 @@ const AdminAnalytics = () => {
 
       {/* FOOTER */}
       <footer className="analytics-data-note">
+        <span>Data source: live Supabase records (farmers, farms, pest_reports).</span>
         <span>
-          Data source: live Supabase records (farmers, farms, pest_reports).
-        </span>
-        <span>
-          {loading
-            ? 'Loading…'
-            : `Showing ${totalFarmers} farmers · ${totalFarms} farms · ${totalReports} reports`}
+          {loading ? 'Loading…' : `Showing ${totalFarmers} farmers · ${totalFarms} farms · ${totalReports} reports`}
         </span>
       </footer>
     </main>

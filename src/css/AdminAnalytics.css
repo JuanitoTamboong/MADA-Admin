@@ -1,13 +1,14 @@
 /* =========================================================
-   AdminAnalytics.css
+   AdminAnalytics.css — modern mixed-width layout
    ========================================================= */
 
 .analytics-page {
   display: grid;
-  gap: 16px;
-  padding: 26px 28px 32px;
+  gap: 14px;
+  padding: 20px 22px 28px;
   color: #26352a;
-  line-height: 1.45;
+  line-height: 1.42;
+  font-size: 0.72rem;
 }
 
 /* ---------------- HEADING ---------------- */
@@ -15,65 +16,65 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 }
 
 .analytics-eyebrow {
-  margin: 0 0 5px;
+  margin: 0 0 3px;
   color: #43805d;
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .analytics-heading h1 {
   margin: 0;
   color: #173b29;
-  font-size: 1.55rem;
+  font-size: 1.3rem;
   font-weight: 750;
-  letter-spacing: -0.04em;
-  line-height: 1.2;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .analytics-heading > div > p:last-child {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: #718078;
-  font-size: 0.75rem;
-  line-height: 1.5;
-  max-width: 620px;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  max-width: 560px;
 }
 
 .analytics-heading-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid #dce8dc;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #f0f6ef;
   color: #4e815c;
 }
 
-/* ---------------- COMPACT NOTICE ---------------- */
+/* ---------------- NOTICE ---------------- */
 .analytics-notice {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border: 1px solid #e2ecdf;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #f4f9f3;
   color: #3f5a48;
 }
 
 .analytics-notice-icon {
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #e3efe2;
   color: #4f8261;
 }
@@ -81,18 +82,14 @@
 .analytics-notice > div {
   display: grid;
   gap: 1px;
-  font-size: 0.7rem;
-  line-height: 1.5;
+  font-size: 0.62rem;
+  line-height: 1.4;
 }
 
 .analytics-notice strong {
   color: #2d4136;
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
-}
-
-.analytics-notice span:not(.analytics-notice-icon) {
-  color: #607267;
 }
 
 /* ---------------- FILTERS ---------------- */
@@ -100,67 +97,60 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px 12px;
   border: 1px solid #e7eeea;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(26, 67, 45, 0.025);
+  box-shadow: 0 1px 4px rgba(26, 67, 45, 0.025);
 }
 
 .analytics-filters label {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 145px;
-  flex: 1 1 160px;
+  gap: 6px;
+  min-width: 130px;
+  flex: 1 1 140px;
 }
 
 .analytics-filters label > span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: #657168;
-  font-size: 0.58rem;
+  font-size: 0.54rem;
   font-weight: 650;
   white-space: nowrap;
 }
 
 .analytics-filters select {
   flex: 1;
-  height: 36px;
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 8px;
   border: 1px solid #e1e8e2;
-  border-radius: 8px;
+  border-radius: 7px;
   background-color: #ffffff;
   color: #344238;
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   color-scheme: light;
   box-sizing: border-box;
-}
-
-.analytics-filters select:disabled {
-  background: #f6f8f7;
-  color: #98a29a;
-  cursor: not-allowed;
 }
 
 .analytics-reset {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid #e1e8e2;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #f8faf8;
   color: #4c5d52;
   cursor: pointer;
   font: inherit;
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   font-weight: 650;
-  transition: background-color 160ms ease, border-color 160ms ease;
 }
 
 .analytics-reset:hover {
@@ -168,32 +158,33 @@
   background: #eef5f0;
 }
 
-/* ---------------- METRICS ---------------- */
-.analytics-metrics {
+/* ---------------- KPI ROW ---------------- */
+.analytics-metrics,
+.analytics-insights {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .analytics-metric {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 14px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
   border: 1px solid #e7eeea;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(26, 67, 45, 0.025);
+  box-shadow: 0 1px 4px rgba(26, 67, 45, 0.025);
 }
 
 .analytics-metric-icon {
   display: grid;
-  width: 33px;
-  height: 33px;
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 8px;
 }
 
 .analytics-metric-icon--green  { background: #ebf7ed; color: #4f8261; }
@@ -204,46 +195,69 @@
 .analytics-metric > div {
   display: grid;
   min-width: 0;
-  gap: 3px;
+  gap: 2px;
 }
 
 .analytics-metric > div > span {
   color: #758178;
-  font-size: 0.58rem;
+  font-size: 0.54rem;
 }
 
 .analytics-metric strong {
   color: #2a4031;
-  font-size: 0.97rem;
-  font-weight: 750;
-  line-height: 1.15;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .analytics-metric small {
   color: #929a93;
+  font-size: 0.5rem;
+  line-height: 1.35;
+}
+
+/* ---------------- TREND CHIPS ---------------- */
+.analytics-metric-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 0.55rem;
-  line-height: 1.4;
 }
 
-/* ---------------- QUICK INSIGHTS ---------------- */
-.analytics-insights {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+.analytics-trend-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #16834d;
+  font-weight: 700;
 }
 
+.analytics-trend-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #b3493b;
+  font-weight: 700;
+}
+
+.analytics-trend-flat {
+  color: #8a958e;
+  font-weight: 600;
+}
+
+/* ---------------- INSIGHTS ---------------- */
 .analytics-insight {
   display: grid;
-  gap: 3px;
-  padding: 12px 14px;
+  gap: 1px;
+  padding: 9px 12px;
   border: 1px solid #e7eeea;
-  border-radius: 9px;
+  border-radius: 8px;
   background: #fbfdfb;
 }
 
 .analytics-insight > span {
   color: #758178;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -252,7 +266,7 @@
 .analytics-insight > strong {
   overflow: hidden;
   color: #2a4031;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 750;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -260,67 +274,113 @@
 
 .analytics-insight > small {
   color: #8a958e;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
 }
 
 /* ---------------- CARDS ---------------- */
 .analytics-card {
+  display: flex;
   min-width: 0;
-  padding: 16px;
+  flex-direction: column;
+  padding: 14px;
   border: 1px solid #e7eeea;
-  border-radius: 9px;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(26, 67, 45, 0.025);
+  box-shadow: 0 1px 4px rgba(26, 67, 45, 0.03);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.analytics-card:hover {
+  box-shadow: 0 6px 20px rgba(26, 67, 45, 0.07);
 }
 
 .analytics-card-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .analytics-card-heading h2 {
   margin: 0;
   color: #2d4136;
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .analytics-card-heading p {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
   color: #879189;
-  font-size: 0.6rem;
-  line-height: 1.45;
+  font-size: 0.56rem;
+  line-height: 1.4;
 }
 
 .analytics-unit-label {
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 6px;
   background: #f3f7f2;
   color: #6d7b6e;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 650;
   white-space: nowrap;
 }
 
-.analytics-chart-grid {
+/* ---------------- ROWS (mixed width) ---------------- */
+.analytics-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: stretch;
+}
+
+.analytics-row--a {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+}
+
+.analytics-row--b {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-row--c {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-row > .analytics-card {
+  height: 100%;
+  min-height: 260px;
+}
+
+.analytics-row--a > .analytics-card:first-child {
+  min-height: 280px;
+}
+
+/* Chart area inside each card fills remaining vertical space */
+.analytics-line-wrapper {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.analytics-line-svg {
+  width: 100%;
+  flex: 1;
+  min-height: 130px;
+  overflow: visible;
 }
 
 .analytics-no-data {
   display: grid;
-  min-height: 150px;
-  margin: 12px 0 0;
+  flex: 1;
+  min-height: 110px;
+  margin: 8px 0 0;
   place-items: center;
   border: 1px dashed #e1e8e1;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #929a93;
-  font-size: 0.66rem;
+  font-size: 0.58rem;
   background: #fcfdfc;
 }
 
@@ -331,15 +391,17 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .analytics-bar-list li {
   display: grid;
-  grid-template-columns: minmax(90px, 1.1fr) minmax(60px, 3fr) auto;
+  grid-template-columns: minmax(80px, 1.1fr) minmax(50px, 3fr) auto;
   align-items: center;
-  gap: 12px;
-  font-size: 0.62rem;
+  gap: 10px;
+  font-size: 0.58rem;
   color: #3b4d42;
 }
 
@@ -353,7 +415,7 @@
 
 .analytics-bar-track {
   display: block;
-  height: 9px;
+  height: 8px;
   border-radius: 999px;
   background: #eaf1ed;
   overflow: hidden;
@@ -367,36 +429,19 @@
   transition: width 0.3s ease;
 }
 
-.analytics-bar-fill--amber {
-  background: #f4ad35;
-}
-
-.analytics-bar-fill--blue {
-  background: #368bd6;
-}
+.analytics-bar-fill--amber { background: #f4ad35; }
+.analytics-bar-fill--blue  { background: #368bd6; }
 
 .analytics-bar-list b {
-  min-width: 34px;
+  min-width: 30px;
   color: #0d2818;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-/* ---------------- LINE CHART ---------------- */
-.analytics-line-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.analytics-line-svg {
-  width: 100%;
-  height: 150px;
-  overflow: visible;
-}
-
+/* ---------------- LINE CHART AXES ---------------- */
 .analytics-line-grid path {
   fill: none;
   stroke: #eef2ef;
@@ -415,22 +460,22 @@
   justify-content: space-between;
   padding: 0 26px;
   color: #5c6e58;
-  font-size: 0.56rem;
+  font-size: 0.54rem;
   font-weight: 600;
 }
 
-/* ---------------- DONUT CHART ---------------- */
+/* ---------------- DONUT ---------------- */
 .analytics-donut-wrapper {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding-top: 4px;
+  gap: 14px;
+  flex: 1;
+  padding-top: 2px;
 }
 
 .analytics-donut-ring {
-  width: 130px;
-  height: 130px;
+  width: 108px;
+  height: 108px;
   flex-shrink: 0;
   border-radius: 50%;
   background: #eef2ef;
@@ -439,26 +484,26 @@
 }
 
 .analytics-donut-center {
-  width: 84px;
-  height: 84px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   background: #ffffff;
   display: grid;
   place-items: center;
-  gap: 2px;
+  gap: 1px;
   text-align: center;
 }
 
 .analytics-donut-center strong {
   color: #0d2818;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1;
 }
 
 .analytics-donut-center span {
   color: #8a958e;
-  font-size: 0.5rem;
+  font-size: 0.46rem;
   font-weight: 600;
 }
 
@@ -468,7 +513,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   flex: 1;
 }
@@ -476,40 +521,51 @@
 .analytics-donut-legend li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.63rem;
+  gap: 6px;
+  font-size: 0.56rem;
   color: #3b4d42;
 }
 
+.analytics-donut-legend em {
+  margin-left: auto;
+  color: #8a958e;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.5rem;
+}
+
+.analytics-donut-legend b {
+  min-width: 22px;
+  color: #0d2818;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .analytics-donut-dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.analytics-donut-legend b {
-  margin-left: auto;
-  color: #0d2818;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------------- PILL LIST (crop mix) ---------------- */
+/* ---------------- PILL LIST ---------------- */
 .analytics-pill-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .analytics-pill-list li {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
 }
 
 .analytics-pill {
@@ -536,46 +592,46 @@
 /* ---------------- FOOTER ---------------- */
 .analytics-data-note {
   display: grid;
-  gap: 3px;
-  padding: 0 2px 4px;
+  gap: 2px;
+  padding: 0 2px 2px;
   color: #89938b;
-  font-size: 0.58rem;
-  line-height: 1.5;
+  font-size: 0.52rem;
+  line-height: 1.4;
 }
 
 /* ---------------- ERROR BANNER ---------------- */
 .admin-error {
   margin: 0;
-  padding: 10px 14px;
+  padding: 8px 12px;
   color: #b42318;
   background: #fff3f1;
   border: 1px solid #fecaca;
   border-radius: 8px;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   line-height: 1.4;
 }
 
 /* ---------------- RESPONSIVE ---------------- */
-@media (max-width: 900px) {
-  .analytics-page {
-    padding: 20px;
+@media (max-width: 1100px) {
+  .analytics-row--a {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analytics-row--b,
+  .analytics-row--c {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .analytics-metrics,
   .analytics-insights {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .analytics-bar-list li {
-    grid-template-columns: minmax(80px, 1.2fr) minmax(40px, 3fr) auto;
-    gap: 10px;
-  }
 }
 
 @media (max-width: 680px) {
   .analytics-page {
-    gap: 12px;
-    padding: 16px 12px;
+    gap: 10px;
+    padding: 14px 12px;
   }
 
   .analytics-heading {
@@ -584,8 +640,8 @@
   }
 
   .analytics-filters label {
-    min-width: calc(50% - 5px);
-    flex-basis: calc(50% - 5px);
+    min-width: calc(50% - 4px);
+    flex-basis: calc(50% - 4px);
   }
 
   .analytics-reset {
@@ -593,20 +649,19 @@
     justify-content: center;
   }
 
-  .analytics-chart-grid {
-    grid-template-columns: 1fr;
+  .analytics-row--a,
+  .analytics-row--b,
+  .analytics-row--c {
+    grid-template-columns: minmax(0, 1fr);
   }
 
+  .analytics-metrics,
   .analytics-insights {
     grid-template-columns: 1fr;
   }
 
   .analytics-donut-wrapper {
     justify-content: center;
-  }
-
-  .analytics-line-svg {
-    height: 130px;
   }
 }
 
@@ -616,18 +671,10 @@
     grid-template-areas:
       'label value'
       'track track';
-    gap: 4px 8px;
+    gap: 3px 6px;
   }
 
-  .analytics-bar-list li .analytics-bar-label {
-    grid-area: label;
-  }
-
-  .analytics-bar-list li b {
-    grid-area: value;
-  }
-
-  .analytics-bar-list li .analytics-bar-track {
-    grid-area: track;
-  }
+  .analytics-bar-list li .analytics-bar-label { grid-area: label; }
+  .analytics-bar-list li b { grid-area: value; }
+  .analytics-bar-list li .analytics-bar-track { grid-area: track; }
 }
