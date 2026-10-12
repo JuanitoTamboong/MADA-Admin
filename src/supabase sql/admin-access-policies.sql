@@ -2,7 +2,7 @@
 -- 009 — Admin access policies
 -- Grants admins:
 --   • read access to every farmer-owned table
---   • update on pest_reports (status + notes)
+--   • update on pest_reports and assistance_requests
 --   • update on farms (crop / variety / dates / status)
 --   • read access to both storage buckets
 -- Requires 008 to have run first.
@@ -90,6 +90,22 @@ create policy "Admins update pest reports"
   using (public.is_admin())
   with check (public.is_admin());
 
+-- assistance_requests (read + update)
+drop policy if exists "Admins read all assistance requests" on public.assistance_requests;
+create policy "Admins read all assistance requests"
+  on public.assistance_requests
+  for select
+  to authenticated
+  using (public.is_admin());
+
+drop policy if exists "Admins update assistance requests" on public.assistance_requests;
+create policy "Admins update assistance requests"
+  on public.assistance_requests
+  for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
 -- ---------------------------------------------------------
 -- 3. Storage — admins read images from both buckets
 -- ---------------------------------------------------------
@@ -127,7 +143,8 @@ where (
       'public.farms'::regclass,
       'public.tasks'::regclass,
       'public.farm_expenses'::regclass,
-      'public.pest_reports'::regclass
+      'public.pest_reports'::regclass,
+      'public.assistance_requests'::regclass
     )
     and polname like 'Admins %'
   )

@@ -3,9 +3,6 @@ import {
   Check,
   ChevronDown,
   ClipboardList,
-  FileText,
-  List as ListIcon,
-  Map as MapIcon,
   MapPin,
   Pencil,
   Search,
@@ -384,7 +381,6 @@ const AdminFarmers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [view, setView] = useState<'list' | 'map'>('list');
   const [search, setSearch] = useState('');
   const [barangayFilter, setBarangayFilter] = useState(allFilter);
   const [cropFilter, setCropFilter] = useState(allFilter);
@@ -423,8 +419,6 @@ const AdminFarmers = () => {
       return;
     }
 
-    // Group farms + reports by farmer (this uses the GLOBAL Map now — no
-    // shadowing, the lucide icon is imported as `MapIcon`.)
     const farmsByFarmer = new Map<string, FarmerFarm[]>();
     for (const f of (farmsRes.data ?? []) as FarmRow[]) {
       const list = farmsByFarmer.get(f.farmer_id) ?? [];
@@ -473,7 +467,6 @@ const AdminFarmers = () => {
 
     setFarmers(mapped);
 
-    // Sign every avatar in one round-trip
     const signed = await signAvatarUrls(
       rows.map((r) => r.avatar_path ?? '').filter(Boolean),
     );
@@ -633,37 +626,6 @@ const AdminFarmers = () => {
                   } shown`}
             </p>
           </div>
-
-          <div
-            aria-label="Directory view"
-            className="farmers-view-toggle"
-            role="group"
-          >
-            <button
-              aria-pressed={view === 'list'}
-              className={
-                view === 'list'
-                  ? 'farmers-view-button farmers-view-button--active'
-                  : 'farmers-view-button'
-              }
-              onClick={() => setView('list')}
-              type="button"
-            >
-              <ListIcon size={15} /> List
-            </button>
-            <button
-              aria-pressed={view === 'map'}
-              className={
-                view === 'map'
-                  ? 'farmers-view-button farmers-view-button--active'
-                  : 'farmers-view-button'
-              }
-              onClick={() => setView('map')}
-              type="button"
-            >
-              <MapIcon size={15} /> Map
-            </button>
-          </div>
         </div>
 
         <div className="farmers-filters">
@@ -726,186 +688,105 @@ const AdminFarmers = () => {
           </label>
         </div>
 
-        {view === 'list' ? (
-          <div className="farmers-table-wrap">
-            <table className="farmers-table">
-              <thead>
+        <div className="farmers-table-wrap">
+          <table className="farmers-table">
+            <thead>
+              <tr>
+                <th scope="col">Farmer ID</th>
+                <th scope="col">Farmer</th>
+                <th scope="col">Barangay</th>
+                <th scope="col">Email</th>
+                <th scope="col">Main crop</th>
+                <th scope="col">Farms</th>
+                <th scope="col">Status</th>
+                <th scope="col">
+                  <span className="farmers-visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
                 <tr>
-                  <th scope="col">Farmer ID</th>
-                  <th scope="col">Farmer</th>
-                  <th scope="col">Barangay</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Main crop</th>
-                  <th scope="col">Farms</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">
-                    <span className="farmers-visually-hidden">Actions</span>
-                  </th>
+                  <td className="farmers-empty-state" colSpan={8}>
+                    Loading farmers…
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td className="farmers-empty-state" colSpan={8}>
-                      Loading farmers…
-                    </td>
-                  </tr>
-                )}
+              )}
 
-                {!loading && filteredFarmers.length === 0 && (
-                  <tr>
-                    <td className="farmers-empty-state" colSpan={8}>
-                      {farmers.length === 0
-                        ? 'No farmers registered yet.'
-                        : 'No farmers match these search and filter criteria.'}
-                    </td>
-                  </tr>
-                )}
+              {!loading && filteredFarmers.length === 0 && (
+                <tr>
+                  <td className="farmers-empty-state" colSpan={8}>
+                    {farmers.length === 0
+                      ? 'No farmers registered yet.'
+                      : 'No farmers match these search and filter criteria.'}
+                  </td>
+                </tr>
+              )}
 
-                {!loading &&
-                  filteredFarmers.map((farmer) => {
-                    const avatarUrl = farmer.avatarPath
-                      ? avatarUrls[farmer.avatarPath]
-                      : null;
-                    return (
-                      <tr key={farmer.id}>
-                        <td>{farmer.id.slice(0, 8).toUpperCase()}</td>
-                        <td>
-                          <div className="farmer-table-identity">
-                            {avatarUrl ? (
-                              <img
-                                src={avatarUrl}
-                                alt={farmer.name}
-                                className="farmer-avatar farmer-avatar--img"
-                              />
-                            ) : (
-                              <div className="farmer-avatar">
-                                {initialFromName(farmer.name)}
-                              </div>
-                            )}
-                            <div>
-                              <strong>{farmer.name}</strong>
-                            </div>
-                          </div>
-                        </td>
-                        <td>{farmer.barangay || 'Not recorded'}</td>
-                        <td>{farmer.email || '—'}</td>
-                        <td>{farmer.mainCrop || 'Not recorded'}</td>
-                        <td>{farmer.farms.length}</td>
-                        <td>
-                          <span
-                            className={`farmer-status farmer-status--${statusClass(
-                              farmer.status,
-                            )}`}
-                          >
-                            {farmer.status}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="farmer-row-actions">
-                            <button
-                              className="farmer-text-action"
-                              onClick={() => setSelectedFarmer(farmer)}
-                              type="button"
-                            >
-                              View
-                            </button>
-                            <button
-                              aria-label={`Edit ${farmer.name}`}
-                              className="farmers-icon-button farmers-edit-button"
-                              onClick={() => editFarmer(farmer)}
-                              type="button"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="farmers-map-overview">
-            <div className="farmers-map-notice">
-              <MapPin size={17} />
-              <p>
-                <strong>Barangay-level overview · not to scale.</strong>{' '}
-                Farmers are grouped by the address on file; coordinates are not
-                collected.
-              </p>
-            </div>
-
-            <div className="farmers-map-groups">
-              {barangays
-                .filter(
-                  (name) =>
-                    barangayFilter === allFilter || name === barangayFilter,
-                )
-                .map((name) => {
-                  const group = filteredFarmers.filter(
-                    (f) => f.barangay === name,
-                  );
+              {!loading &&
+                filteredFarmers.map((farmer) => {
+                  const avatarUrl = farmer.avatarPath
+                    ? avatarUrls[farmer.avatarPath]
+                    : null;
                   return (
-                    <section className="farmers-map-group" key={name}>
-                      <header>
-                        <span className="farmers-map-group-icon">
-                          <MapPin size={16} />
-                        </span>
-                        <div>
-                          <h3>{name}</h3>
-                          <p>
-                            {group.length} matching{' '}
-                            {group.length === 1 ? 'farmer' : 'farmers'}
-                          </p>
+                    <tr key={farmer.id}>
+                      <td>{farmer.id.slice(0, 8).toUpperCase()}</td>
+                      <td>
+                        <div className="farmer-table-identity">
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={farmer.name}
+                              className="farmer-avatar farmer-avatar--img"
+                            />
+                          ) : (
+                            <div className="farmer-avatar">
+                              {initialFromName(farmer.name)}
+                            </div>
+                          )}
+                          <div>
+                            <strong>{farmer.name}</strong>
+                          </div>
                         </div>
-                        <span className="farmers-map-count">{group.length}</span>
-                      </header>
-
-                      {group.length ? (
-                        <ul>
-                          {group.map((farmer) => (
-                            <li key={farmer.id}>
-                              <span className="farmer-map-record">
-                                <strong>{farmer.name}</strong>
-                                <span>
-                                  {farmer.id.slice(0, 8).toUpperCase()} ·{' '}
-                                  {farmer.mainCrop || 'Crop not recorded'} ·{' '}
-                                  {farmer.farms.length}{' '}
-                                  {farmer.farms.length === 1 ? 'farm' : 'farms'}
-                                </span>
-                              </span>
-                              <button
-                                className="farmer-text-action"
-                                onClick={() => setSelectedFarmer(farmer)}
-                                type="button"
-                              >
-                                View
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="farmers-map-empty">
-                          No farmers match the current search and filters.
-                        </p>
-                      )}
-                    </section>
+                      </td>
+                      <td>{farmer.barangay || 'Not recorded'}</td>
+                      <td>{farmer.email || '—'}</td>
+                      <td>{farmer.mainCrop || 'Not recorded'}</td>
+                      <td>{farmer.farms.length}</td>
+                      <td>
+                        <span
+                          className={`farmer-status farmer-status--${statusClass(
+                            farmer.status,
+                          )}`}
+                        >
+                          {farmer.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="farmer-row-actions">
+                          <button
+                            className="farmer-text-action"
+                            onClick={() => setSelectedFarmer(farmer)}
+                            type="button"
+                          >
+                            View
+                          </button>
+                          <button
+                            aria-label={`Edit ${farmer.name}`}
+                            className="farmers-icon-button farmers-edit-button"
+                            onClick={() => editFarmer(farmer)}
+                            type="button"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
-
-              {!loading && barangays.length === 0 && (
-                <p className="farmers-map-empty">No farmers registered yet.</p>
-              )}
-            </div>
-
-            <p className="farmers-map-footnote">
-              <FileText size={14} /> Records are grouped by their address only;
-              this view does not imply precise or verified locations.
-            </p>
-          </div>
-        )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {selectedFarmer && (

@@ -23,6 +23,7 @@ import { supabase } from '../supabase/supabase-client';
 import SettingsPage from './Settings';
 import AdminFarmers from './AdminFarmers';
 import AdminReports from './AdminReports';
+import AdminRequest from './AdminRequest';
 import CropProduction from './CropProduction';
 import WeatherAlerts from './WeatherAlerts';
 import AdminMap from './AdminMap';
@@ -711,6 +712,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <AdminFarmers />
         ) : activePage === 'reports' ? (
           <AdminReports />
+        ) : activePage === 'requests' ? (
+          <AdminRequest />
         ) : activePage === 'crops' ? (
           <CropProduction />
         ) : activePage === 'weather' ? (

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   BarChart3,
+  ClipboardList,
   CloudSun,
   FileText,
   LayoutDashboard,
@@ -51,6 +52,14 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
       >
         <FileText size={18} />
         <span>Reports</span>
+      </a>
+      <a
+        aria-current={activePage === 'requests' ? 'page' : undefined}
+        className={`nav-item${activePage === 'requests' ? ' active' : ''}`}
+        href="#requests"
+      >
+        <ClipboardList size={18} />
+        <span>Assistance Requests</span>
       </a>
       <a
         aria-current={activePage === 'crops' ? 'page' : undefined}
