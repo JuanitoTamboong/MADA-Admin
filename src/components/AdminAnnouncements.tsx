@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   CalendarDays,
   CheckCircle2,
   Eye,
   Filter,
+  ImagePlus,
   MapPin,
   Megaphone,
   Pencil,
@@ -23,9 +24,11 @@ import '../css/AdminAnnouncements.css';
 import {
   createAnnouncement,
   deleteAnnouncement,
+  deleteAnnouncementImage,
   fetchAnnouncements,
   setAnnouncementStatus,
   updateAnnouncement,
+  uploadAnnouncementImage,
 } from '../supabase/announcement';
 
 // Compile-time types only (required by verbatimModuleSyntax)
@@ -65,6 +68,7 @@ const createBlankAnnouncement = (): Omit<Announcement, 'id'> => ({
   summary: '',
   instructions: '',
   contact: '',
+  imageUrl: null,
 });
 
 const formatDate = (value: string) =>
@@ -91,6 +95,11 @@ const AdminAnnouncements = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftAnnouncement, setDraftAnnouncement] =
     useState<Omit<Announcement, 'id'>>(createBlankAnnouncement());
+
+  // Image upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Preview modal state
   const [showPreview, setShowPreview] = useState(false);
@@ -126,7 +135,7 @@ const AdminAnnouncements = () => {
     () =>
       announcements.filter((announcement) => {
         const matchesSearch =
-          `${announcement.title} ${announcement.location} ${announcement.audience}`
+          `${announcement.title} ${announcement.location} ${announcement.audience} ${announcement.summary}`
             .toLowerCase()
             .includes(search.toLowerCase());
         const matchesCategory =
@@ -198,12 +207,13 @@ const AdminAnnouncements = () => {
   const previewAnnouncement =
     announcements.find((a) => a.id === previewId) ?? null;
 
-  const deleteAnnouncement_ =
+  const announcementToDelete =
     announcements.find((a) => a.id === deleteId) ?? null;
 
   const openComposerForCreate = () => {
     setEditingId(null);
     setDraftAnnouncement(createBlankAnnouncement());
+    setUploadError(null);
     setShowComposer(true);
   };
 
@@ -220,7 +230,9 @@ const AdminAnnouncements = () => {
       summary: announcement.summary,
       instructions: announcement.instructions,
       contact: announcement.contact,
+      imageUrl: announcement.imageUrl,
     });
+    setUploadError(null);
     setShowComposer(true);
   };
 
@@ -228,6 +240,7 @@ const AdminAnnouncements = () => {
     setShowComposer(false);
     setEditingId(null);
     setDraftAnnouncement(createBlankAnnouncement());
+    setUploadError(null);
   };
 
   const openPreview = (id: string) => {
@@ -250,6 +263,42 @@ const AdminAnnouncements = () => {
     setDeleteId(null);
   };
 
+  // ---------- Image handlers ----------
+  const handleImageSelected = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const publicUrl = await uploadAnnouncementImage(file);
+      setDraftAnnouncement((current) => ({ ...current, imageUrl: publicUrl }));
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+      // allow re-selecting the same file
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    const url = draftAnnouncement.imageUrl;
+    if (!url) return;
+
+    setDraftAnnouncement((current) => ({ ...current, imageUrl: null }));
+
+    // Best-effort storage cleanup; ignore errors
+    try {
+      await deleteAnnouncementImage(url);
+    } catch (err) {
+      console.warn('Could not remove image from storage:', err);
+    }
+  };
+
+  // ---------- CRUD ----------
   const handleDeleteAnnouncement = async () => {
     if (!deleteId) return;
     setDeleting(true);
@@ -322,6 +371,7 @@ const AdminAnnouncements = () => {
         'Review the notice and share the required guidance with the target audience.',
       contact:
         draftAnnouncement.contact.trim() || 'Municipal agriculture office',
+      imageUrl: draftAnnouncement.imageUrl,
     };
 
     setSaving(true);
@@ -492,27 +542,37 @@ const AdminAnnouncements = () => {
                 role="button"
                 tabIndex={0}
               >
-                <div className="announcement-item-topline">
-                  <span className="announcement-chip">
-                    {announcement.category}
-                  </span>
-                  <span className={statusClass(announcement.status)}>
-                    {announcement.status}
-                  </span>
+                {announcement.imageUrl ? (
+                  <img
+                    className="announcement-item-thumb"
+                    src={announcement.imageUrl}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : null}
+                <div className="announcement-item-body">
+                  <div className="announcement-item-topline">
+                    <span className="announcement-chip">
+                      {announcement.category}
+                    </span>
+                    <span className={statusClass(announcement.status)}>
+                      {announcement.status}
+                    </span>
+                  </div>
+                  <h2>{announcement.title}</h2>
+                  <p>{announcement.summary}</p>
+                  <div className="announcement-meta">
+                    <span>
+                      <MapPin size={12} /> {announcement.location}
+                    </span>
+                    <span>
+                      <Users size={12} /> {announcement.audience}
+                    </span>
+                  </div>
+                  <time dateTime={announcement.publishDate}>
+                    Published {formatDate(announcement.publishDate)}
+                  </time>
                 </div>
-                <h2>{announcement.title}</h2>
-                <p>{announcement.summary}</p>
-                <div className="announcement-meta">
-                  <span>
-                    <MapPin size={12} /> {announcement.location}
-                  </span>
-                  <span>
-                    <Users size={12} /> {announcement.audience}
-                  </span>
-                </div>
-                <time dateTime={announcement.publishDate}>
-                  Published {formatDate(announcement.publishDate)}
-                </time>
               </article>
             ))
           ) : (
@@ -535,6 +595,14 @@ const AdminAnnouncements = () => {
                 {selectedAnnouncement.status}
               </span>
             </div>
+
+            {selectedAnnouncement.imageUrl ? (
+              <img
+                className="announcement-detail-image"
+                src={selectedAnnouncement.imageUrl}
+                alt={selectedAnnouncement.title}
+              />
+            ) : null}
 
             <div className="announcement-detail-grid">
               <div>
@@ -646,6 +714,68 @@ const AdminAnnouncements = () => {
             </div>
 
             <div className="announcement-composer-grid">
+              {/* ---- Cover image uploader ---- */}
+              <div className="announcement-composer-full">
+                <span className="announcement-field-label">
+                  Cover image (optional)
+                </span>
+                <div className="announcement-image-uploader">
+                  {draftAnnouncement.imageUrl ? (
+                    <div className="announcement-image-preview">
+                      <img
+                        src={draftAnnouncement.imageUrl}
+                        alt="Announcement cover preview"
+                      />
+                      <div className="announcement-image-actions">
+                        <button
+                          type="button"
+                          className="action secondary"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          <Pencil size={14} /> Replace
+                        </button>
+                        <button
+                          type="button"
+                          className="action danger"
+                          onClick={handleRemoveImage}
+                          disabled={uploading}
+                        >
+                          <Trash2 size={14} /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="announcement-image-dropzone"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <ImagePlus size={18} />
+                      <span>
+                        {uploading
+                          ? 'Uploading…'
+                          : 'Click to upload an image (max 5 MB)'}
+                      </span>
+                    </button>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelected}
+                    hidden
+                  />
+
+                  {uploadError ? (
+                    <p className="announcement-image-error">{uploadError}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* ---- Existing fields ---- */}
               <label>
                 <span>Title</span>
                 <input
@@ -799,7 +929,7 @@ const AdminAnnouncements = () => {
                 className="action secondary"
                 onClick={closeComposer}
                 type="button"
-                disabled={saving}
+                disabled={saving || uploading}
               >
                 Cancel
               </button>
@@ -807,7 +937,7 @@ const AdminAnnouncements = () => {
                 className="action primary"
                 onClick={handleSaveAnnouncement}
                 type="button"
-                disabled={saving}
+                disabled={saving || uploading}
               >
                 <Save size={14} />
                 {saving
@@ -856,6 +986,14 @@ const AdminAnnouncements = () => {
 
               <h1 className="preview-title">{previewAnnouncement.title}</h1>
 
+              {previewAnnouncement.imageUrl ? (
+                <img
+                  className="preview-image"
+                  src={previewAnnouncement.imageUrl}
+                  alt={previewAnnouncement.title}
+                />
+              ) : null}
+
               <ul className="preview-meta">
                 <li>
                   <CalendarDays size={14} />
@@ -890,7 +1028,7 @@ const AdminAnnouncements = () => {
       ) : null}
 
       {/* ---------------- DELETE CONFIRM MODAL ---------------- */}
-      {showDeleteConfirm && deleteAnnouncement_ ? (
+      {showDeleteConfirm && announcementToDelete ? (
         <div
           className="announcement-modal-overlay"
           role="dialog"
@@ -915,7 +1053,7 @@ const AdminAnnouncements = () => {
 
             <p className="delete-confirm-text">
               Are you sure you want to permanently delete{' '}
-              <strong>“{deleteAnnouncement_.title}”</strong>? This action
+              <strong>“{announcementToDelete.title}”</strong>? This action
               cannot be undone.
             </p>
 

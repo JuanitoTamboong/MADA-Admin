@@ -20,6 +20,7 @@ export interface Announcement {
   summary: string;
   instructions: string;
   contact: string;
+  imageUrl: string | null;   // ← NEW
 }
 
 // DB row shape (snake_case)
@@ -35,6 +36,7 @@ type AnnouncementRow = {
   summary: string;
   instructions: string;
   contact: string;
+  image_url: string | null;  // ← NEW
 };
 
 const rowToAnnouncement = (row: AnnouncementRow): Announcement => ({
@@ -49,12 +51,13 @@ const rowToAnnouncement = (row: AnnouncementRow): Announcement => ({
   summary: row.summary,
   instructions: row.instructions,
   contact: row.contact,
+  imageUrl: row.image_url ?? null,
 });
 
 const toRowPayload = (
   a: Omit<Announcement, 'id'> & { id?: string },
 ): AnnouncementRow => ({
-  id: a.id ?? `A-${Date.now()}`,
+  id: a.id ?? crypto.randomUUID(),
   title: a.title,
   category: a.category,
   audience: a.audience,
@@ -65,7 +68,12 @@ const toRowPayload = (
   summary: a.summary,
   instructions: a.instructions,
   contact: a.contact,
+  image_url: a.imageUrl,
 });
+
+// ============================================================
+// CRUD
+// ============================================================
 
 export async function fetchAnnouncements(): Promise<Announcement[]> {
   const { data, error } = await supabase
@@ -120,10 +128,70 @@ export async function setAnnouncementStatus(
 }
 
 export async function deleteAnnouncement(id: string): Promise<void> {
+  // Grab the image URL first so we can clean up storage
+  const { data: existing, error: fetchErr } = await supabase
+    .from('announcements')
+    .select('image_url')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr) throw new Error(fetchErr.message);
+
   const { error } = await supabase
     .from('announcements')
     .delete()
     .eq('id', id);
 
+  if (error) throw new Error(error.message);
+
+  // Best-effort image cleanup — don't fail the delete if this errors
+  if (existing?.image_url) {
+    try {
+      await deleteAnnouncementImage(existing.image_url);
+    } catch (err) {
+      console.warn('Row deleted, but image cleanup failed:', err);
+    }
+  }
+}
+
+// ============================================================
+// Storage — image upload / delete
+// ============================================================
+
+const BUCKET = 'announcement-images';
+const MAX_IMAGE_MB = 5;
+
+export async function uploadAnnouncementImage(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Only image files are allowed.');
+  }
+  if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+    throw new Error(`Image must be smaller than ${MAX_IMAGE_MB} MB.`);
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type,
+    });
+
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function deleteAnnouncementImage(imageUrl: string): Promise<void> {
+  const marker = `/${BUCKET}/`;
+  const idx = imageUrl.indexOf(marker);
+  if (idx === -1) return; // not a file from our bucket — skip
+
+  const path = imageUrl.slice(idx + marker.length);
+  const { error } = await supabase.storage.from(BUCKET).remove([path]);
   if (error) throw new Error(error.message);
 }
