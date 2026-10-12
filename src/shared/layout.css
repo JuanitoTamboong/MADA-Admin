@@ -25,7 +25,12 @@ body,
 html,
 body {
   height: 100%;
-  background-color: var(--bg-canvas);
+  background: var(--bg-canvas);
+}
+
+html:root {
+  color-scheme: light;
+  background: var(--bg-canvas);
 }
 
 body {
@@ -35,14 +40,17 @@ body {
 #root {
   max-width: none;
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   text-align: left;
+  background: var(--bg-canvas);
 }
 
 .page-layout {
   box-sizing: border-box;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page-layout--dashboard {
@@ -65,12 +73,32 @@ body {
   #root {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow: visible;
   }
 
   .page-layout--dashboard {
+    flex-direction: column;
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow: visible;
+  }
+
+  .page-layout--dashboard > .main-wrapper {
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .farmers-page,
+  .reports-page,
+  .crops-page,
+  .weather-page,
+  .farmers-map-page,
+  .analytics-page,
+  .announcements-page,
+  .settings-page {
+    min-height: 0;
   }
 }
