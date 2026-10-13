@@ -158,6 +158,25 @@
   text-overflow: ellipsis;
 }
 
+/* ============================================================
+   ✅ FIX: Inline icon + label inside the conversation preview
+   (used by <Camera /> and <Paperclip /> from lucide-react)
+   ============================================================ */
+.conversation-preview-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  max-width: 100%;
+  color: #6b7280;
+}
+
+.conversation-preview-icon {
+  flex-shrink: 0;
+  opacity: 0.75;
+  color: currentColor;
+}
+
 /* ---------- RIGHT: Chat thread ---------- */
 .chat-thread {
   display: flex;
@@ -462,7 +481,7 @@
 }
 
 /* ============================================================
-   ✅ FIX: Staged image preview (uploaded but NOT yet sent)
+   ✅ Staged image preview (uploaded but NOT yet sent)
    ============================================================ */
 .chat-thread-staged-image {
   position: relative;
@@ -731,5 +750,10 @@
 
   .chat-thread-staged-remove {
     left: 124px;
+  }
+
+  /* Inline preview icon on mobile */
+  .conversation-preview-inline {
+    gap: 3px;
   }
 }

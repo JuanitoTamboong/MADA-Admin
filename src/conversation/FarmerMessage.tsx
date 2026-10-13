@@ -1,6 +1,15 @@
 // src/conversation/FarmerMessage.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Search, ImagePlus, Trash2, Pencil, X } from 'lucide-react';
+import {
+  Send,
+  Search,
+  ImagePlus,
+  Trash2,
+  Pencil,
+  X,
+  Camera,
+  Paperclip,
+} from 'lucide-react';
 import { supabase } from '../supabase/supabase-client';
 import '../conversation/FarmerMessage.css';
 
@@ -107,7 +116,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // Tracks temp ids so the realtime handler can reconcile them
   const pendingTempIdsRef = useRef<Set<string>>(new Set());
 
   const activeFarmer = useMemo(
@@ -330,12 +338,9 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
             incoming.sender_id === adminId &&
             incoming.receiver_id === activeFarmerId
           ) {
-            // Reconcile: replace any pending temp message with the real row
             setMessages((prev) => {
               if (prev.some((m) => m.id === incoming.id)) return prev;
               const tempIds = pendingTempIdsRef.current;
-              // Find the temp message that matches this real one
-              // (same sender/receiver/content/image_path, still pending)
               const temp = prev.find(
                 (m) =>
                   tempIds.has(m.id) &&
@@ -381,7 +386,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Atomic lock
     if (sendingRef.current) return;
     sendingRef.current = true;
 
@@ -407,7 +411,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
     let imagePreviewUrl: string | null = null;
 
     try {
-      // Upload image first (if any)
       if (imageToSend) {
         const ext = imageToSend.file.name.split('.').pop() || 'jpg';
         imagePath = `${adminId}/${Date.now()}-${Math.random()
@@ -423,7 +426,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
 
         if (uploadError) throw uploadError;
 
-        // Get a signed URL for local preview
         const urls = await signPaths(CHAT_IMAGE_BUCKET, [imagePath]);
         imagePreviewUrl = urls[imagePath] ?? null;
         if (imagePreviewUrl) {
@@ -466,11 +468,9 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
 
       if (error) throw error;
 
-      // If realtime hasn't already reconciled, do it now
       if (inserted) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === inserted.id)) {
-            // Realtime already reconciled — just drop the temp
             return prev.filter((m) => m.id !== tempId);
           }
           return prev.map((m) => (m.id === tempId ? inserted : m));
@@ -492,7 +492,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
           err instanceof Error ? err.message : 'Unknown error'
         }`,
       );
-      // Roll back: remove any temp we added (best-effort)
       setMessages((prev) =>
         prev.filter((m) => !pendingTempIdsRef.current.has(m.id)),
       );
@@ -525,7 +524,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
       return;
     }
 
-    // Replace any previously staged image
     if (pendingImage) URL.revokeObjectURL(pendingImage.previewUrl);
 
     const previewUrl = URL.createObjectURL(file);
@@ -633,7 +631,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
     setDeleting(true);
 
     try {
-      // Delete both directions
       const { error: deleteMsgsError } = await supabase
         .from('messages')
         .delete()
@@ -643,7 +640,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
 
       if (deleteMsgsError) throw deleteMsgsError;
 
-      // Delete associated storage objects
       const pathsToDelete = messages
         .map((m) => m.image_path)
         .filter((p): p is string => !!p);
@@ -677,18 +673,33 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
     return avatarUrls[farmer.avatar_path] ?? null;
   };
 
-  const buildPreview = (last: Message): string => {
+  // ✅ Returns JSX so we can render lucide icons instead of emoji
+  const buildPreview = (last: Message): React.ReactNode => {
     const isMine = last.sender_id === adminId;
     const prefix = isMine ? 'You: ' : '';
 
     if (last.image_path && !last.content) {
-      return `${prefix}📷 Photo`;
+      return (
+        <span className="conversation-preview-inline">
+          {prefix}
+          <Camera size={12} className="conversation-preview-icon" />
+          <span>Photo</span>
+        </span>
+      );
     }
     if (!last.content) {
-      return `${prefix}📎 Attachment`;
+      return (
+        <span className="conversation-preview-inline">
+          {prefix}
+          <Paperclip size={12} className="conversation-preview-icon" />
+          <span>Attachment</span>
+        </span>
+      );
     }
     const truncated =
-      last.content.length > 40 ? `${last.content.slice(0, 40)}…` : last.content;
+      last.content.length > 40
+        ? `${last.content.slice(0, 40)}…`
+        : last.content;
     return `${prefix}${truncated}`;
   };
 
@@ -804,8 +815,13 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
                   const isAdmin = m.sender_id === adminId;
                   const imgUrl = m.image_path ? imageUrls[m.image_path] : null;
                   const isEditing = editingId === m.id;
-                  const canEdit =
-                    isAdmin && !m.image_path && !m.id.startsWith('temp-');
+                  const isPending = m.id.startsWith('temp-');
+
+                  // ✅ Edit → text-only, own, not pending
+                  const canEdit = isAdmin && !m.image_path && !isPending;
+                  // ✅ Delete → any own, not pending (works for images too)
+                  const canDelete = isAdmin && !isPending;
+                  const showActions = (canEdit || canDelete) && !isEditing;
 
                   return (
                     <div
@@ -816,26 +832,30 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
                           : 'chat-bubble-row--received'
                       }`}
                     >
-                      {canEdit && !isEditing && (
+                      {showActions && (
                         <div className="chat-bubble-actions">
-                          <button
-                            type="button"
-                            className="chat-bubble-action-btn"
-                            onClick={() => startEdit(m)}
-                            aria-label="Edit message"
-                            title="Edit"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            className="chat-bubble-action-btn chat-bubble-action-btn--danger"
-                            onClick={() => setDeletingMessageId(m.id)}
-                            aria-label="Delete message"
-                            title="Delete"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className="chat-bubble-action-btn"
+                              onClick={() => startEdit(m)}
+                              aria-label="Edit message"
+                              title="Edit"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="chat-bubble-action-btn chat-bubble-action-btn--danger"
+                              onClick={() => setDeletingMessageId(m.id)}
+                              aria-label="Delete message"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       )}
 
@@ -913,7 +933,6 @@ export default function FarmerMessage({ adminId }: FarmerMessageProps) {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Staged image preview */}
             {pendingImage && (
               <div className="chat-thread-staged-image">
                 <img src={pendingImage.previewUrl} alt="Selected" />
