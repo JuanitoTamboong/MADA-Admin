@@ -29,6 +29,7 @@ import WeatherAlerts from './WeatherAlerts';
 import AdminMap from './AdminMap';
 import AdminAnalytics from './AdminAnalytics';
 import AdminAnnouncements from './AdminAnnouncements';
+import FarmerMessage from '../conversation/FarmerMessage';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
 
@@ -172,7 +173,6 @@ function buildLast7Days(timestamps: string[]): DayPoint[] {
   return days;
 }
 
-// Sign many storage paths in one round-trip. Returns { path -> url }.
 async function signUrls(
   bucket: 'profile-avatars' | 'pest-reports',
   paths: string[],
@@ -182,7 +182,7 @@ async function signUrls(
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrls(uniq, 60 * 60); // 1 hour
+    .createSignedUrls(uniq, 60 * 60);
 
   if (error || !data) return {};
 
@@ -356,12 +356,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         .eq('id', userData.user.id)
         .maybeSingle();
 
-      if (!cancelled && data) setProfile(data as FarmerProfile);
+      if (cancelled || !data) return;
+
+      // ---- FIX: Reject non-admin users ----
+      if (data.role !== 'admin') {
+        console.warn(
+          'Non-admin user reached the admin dashboard. Role:',
+          data.role,
+        );
+        await supabase.auth.signOut();
+        onLogout();
+        return;
+      }
+
+      setProfile(data as FarmerProfile);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onLogout]);
 
   // ---------- dashboard data ----------
   useEffect(() => {
@@ -445,13 +458,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         setTotalFarms(farmsRes.count ?? 0);
         setTotalReports(reportsRes.count ?? 0);
 
-        // Line chart data
         const timestamps = (farmTimestampsRes.data ?? [])
           .map((r) => r.created_at)
           .filter((s): s is string => typeof s === 'string');
         setLast7Farms(buildLast7Days(timestamps));
 
-        // Donut data
         const counts = new Map<string, number>();
         for (const row of farmCropsRes.data ?? []) {
           const key = (row.crop ?? 'Unknown').toString().trim() || 'Unknown';
@@ -467,7 +478,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           .sort((a, b) => b.count - a.count);
         setCropBuckets(buckets);
 
-        // ---- Recent farmers: aggregate farms + sign avatars ----
         const recentFarmerRows = (recentFarmersRes.data ?? []) as FarmerRow[];
         const farmerIds = recentFarmerRows.map((f) => f.id);
 
@@ -511,7 +521,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         if (cancelled) return;
         setAvatarUrls(avatars);
 
-        // ---- Recent reports: farmer join + sign images ----
         const recentReportRows = (recentReportsRes.data ?? []) as ReportRow[];
         const reportFarmerIds = Array.from(
           new Set(recentReportRows.map((r) => r.farmer_id)),
@@ -712,6 +721,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <AdminFarmers />
         ) : activePage === 'reports' ? (
           <AdminReports />
+        ) : activePage === 'messages' ? (
+          profile?.id && profile.role === 'admin' ? (
+            <FarmerMessage adminId={profile.id} />
+          ) : (
+            <main className="dashboard-content">
+              <p className="chart-empty-text">
+                {profile
+                  ? 'You are not authorized to view this page.'
+                  : 'Loading admin profile…'}
+              </p>
+            </main>
+          )
         ) : activePage === 'requests' ? (
           <AdminRequest />
         ) : activePage === 'crops' ? (

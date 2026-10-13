@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Map,
   Megaphone,
+  MessageSquare,  // <-- ADDED
   Settings,
   Sprout,
   Users,
@@ -45,6 +46,17 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Users size={18} />
         <span>Farmers</span>
       </a>
+
+      {/* ---- NEW: Messages ---- */}
+      <a
+        aria-current={activePage === 'messages' ? 'page' : undefined}
+        className={`nav-item${activePage === 'messages' ? ' active' : ''}`}
+        href="#messages"
+      >
+        <MessageSquare size={18} />
+        <span>Messages</span>
+      </a>
+
       <a
         aria-current={activePage === 'reports' ? 'page' : undefined}
         className={`nav-item${activePage === 'reports' ? ' active' : ''}`}
