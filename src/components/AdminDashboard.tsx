@@ -315,6 +315,61 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [reportImageUrls, setReportImageUrls] = useState<Record<string, string>>({});
 
   const [weather, setWeather] = useState<WeatherState | null>(null);
+   
+  // ---------- Admin online presence ----------
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin') return;
+
+    let cancelled = false;
+
+    const presenceChannel = supabase.channel('online-admins', {
+      config: {
+        presence: {
+          key: profile.id,
+        },
+      },
+    });
+
+    presenceChannel.subscribe(async (status) => {
+      if (cancelled) return;
+
+      if (status === 'SUBSCRIBED') {
+        try {
+          const response = await presenceChannel.track({
+            user_id: profile.id,
+            online_at: new Date().toISOString(),
+          });
+
+          if (!cancelled) {
+            if (response === 'ok') {
+              console.log('Admin is online:', profile.id);
+            } else {
+              console.error(
+                'Could not publish admin presence:',
+                response,
+              );
+            }
+          }
+        } catch (err) {
+          if (!cancelled) {
+            console.error('Admin presence error:', err);
+          }
+        }
+      } else if (
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        console.error('Admin presence channel status:', status);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(presenceChannel);
+    };
+  }, [profile?.id, profile?.role]);
+
 
   // ---------- routing ----------
   useEffect(() => {
