@@ -7,9 +7,10 @@ import {
   LayoutDashboard,
   Map,
   Megaphone,
-  MessageSquare,  // <-- ADDED
+  MessageSquare,
   Settings,
   Sprout,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 import mayaBird from '../assets/images/maya-bird.png';
@@ -46,8 +47,6 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <Users size={18} />
         <span>Farmers</span>
       </a>
-
-      {/* ---- NEW: Messages ---- */}
       <a
         aria-current={activePage === 'messages' ? 'page' : undefined}
         className={`nav-item${activePage === 'messages' ? ' active' : ''}`}
@@ -56,7 +55,6 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
         <MessageSquare size={18} />
         <span>Messages</span>
       </a>
-
       <a
         aria-current={activePage === 'reports' ? 'page' : undefined}
         className={`nav-item${activePage === 'reports' ? ' active' : ''}`}
@@ -104,6 +102,14 @@ const SideNav: React.FC<SideNavProps> = ({ activePage }) => (
       >
         <BarChart3 size={18} />
         <span>Analytics</span>
+      </a>
+      <a
+        aria-current={activePage === 'market-prices' ? 'page' : undefined}
+        className={`nav-item${activePage === 'market-prices' ? ' active' : ''}`}
+        href="#market-prices"
+      >
+        <TrendingUp size={18} />
+        <span>Market Prices</span>
       </a>
       <a
         aria-current={activePage === 'announcements' ? 'page' : undefined}

@@ -32,6 +32,7 @@ import AdminAnnouncements from './AdminAnnouncements';
 import FarmerMessage from '../conversation/FarmerMessage';
 import SideNav from '../navigation/SideNav';
 import PageLayout from '../shared/PageLayout';
+import AdminMarketPrices from './AdminMarketPrices'; // <-- ADDED IMPORT
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -66,7 +67,6 @@ interface ReportRow {
   location?: string | null;
 }
 
-// FIXED: Made image_url optional so it doesn't crash if the column is missing
 interface AnnouncementRow {
   id: string;
   title: string;
@@ -91,8 +91,6 @@ interface CropBucket {
   count: number;
   pct: number;
 }
-
-// ---------- helpers ----------
 
 function describeWeather(code: number): string {
   if (code === 0) return 'Clear sky';
@@ -194,8 +192,6 @@ async function signUrls(
   return map;
 }
 
-// ---------- sub-components ----------
-
 function FarmRegistrationsChart({ data }: { data: DayPoint[] }) {
   const W = 420;
   const H = 150;
@@ -287,8 +283,6 @@ function CropDonut({ buckets }: { buckets: CropBucket[] }) {
   );
 }
 
-// ---------- main component ----------
-
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [activePage, setActivePage] = useState(
     () => window.location.hash.slice(1) || 'dashboard',
@@ -317,7 +311,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const [weather, setWeather] = useState<WeatherState | null>(null);
    
-  // ---------- Admin online presence ----------
   useEffect(() => {
     if (!profile || profile.role !== 'admin') return;
 
@@ -371,8 +364,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, [profile?.id, profile?.role]);
 
-
-  // ---------- routing ----------
   useEffect(() => {
     const update = () =>
       setActivePage(window.location.hash.slice(1) || 'dashboard');
@@ -380,7 +371,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     return () => window.removeEventListener('hashchange', update);
   }, []);
 
-  // ---------- dropdown ----------
   useEffect(() => {
     if (!isProfileMenuOpen) return;
     const onDoc = (e: MouseEvent) => {
@@ -399,7 +389,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, [isProfileMenuOpen]);
 
-  // ---------- admin profile ----------
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -414,7 +403,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
       if (cancelled || !data) return;
 
-      // ---- FIX: Reject non-admin users ----
       if (data.role !== 'admin') {
         console.warn(
           'Non-admin user reached the admin dashboard. Role:',
@@ -432,7 +420,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, [onLogout]);
 
-  // ---------- dashboard data ----------
   useEffect(() => {
     if (activePage !== 'dashboard') return;
     let cancelled = false;
@@ -478,7 +465,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             .order('created_at', { ascending: false })
             .limit(5),
 
-          // FIXED: Removed image_url from select so it doesn't crash if column is missing
           supabase
             .from('announcements')
             .select('id, title, created_at')
@@ -635,7 +621,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     };
   }, [activePage]);
 
-  // ---------- weather ----------
   useEffect(() => {
     const address = profile?.address;
     if (!address) return;
@@ -666,7 +651,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           description: describeWeather(wx.current.weather_code),
         });
       } catch {
-        // silent
       }
     })();
 
@@ -800,6 +784,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <AdminMap />
         ) : activePage === 'analytics' ? (
           <AdminAnalytics />
+        ) : activePage === 'market-prices' ? (
+          <AdminMarketPrices /> // <-- ADDED ROUTE
         ) : activePage === 'announcements' ? (
           <AdminAnnouncements />
         ) : activePage === 'settings' ? (
@@ -1254,7 +1240,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <p>{formatRelative(a.created_at)}</p>
                         </div>
 
-                        {/* FIXED: Safely checks if image_url exists before rendering */}
                         {a.image_url ? (
                           <img
                             className="dash-announcement-thumb"
