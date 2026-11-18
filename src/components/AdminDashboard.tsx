@@ -66,11 +66,12 @@ interface ReportRow {
   location?: string | null;
 }
 
+// FIXED: Made image_url optional so it doesn't crash if the column is missing
 interface AnnouncementRow {
   id: string;
   title: string;
   created_at: string;
-  image_url: string | null;
+  image_url?: string | null;
 }
 
 interface WeatherState {
@@ -477,9 +478,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             .order('created_at', { ascending: false })
             .limit(5),
 
+          // FIXED: Removed image_url from select so it doesn't crash if column is missing
           supabase
             .from('announcements')
-            .select('id, title, created_at, image_url')
+            .select('id, title, created_at')
             .order('created_at', { ascending: false })
             .limit(3),
 
@@ -1252,6 +1254,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                           <p>{formatRelative(a.created_at)}</p>
                         </div>
 
+                        {/* FIXED: Safely checks if image_url exists before rendering */}
                         {a.image_url ? (
                           <img
                             className="dash-announcement-thumb"
