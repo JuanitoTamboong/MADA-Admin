@@ -48,48 +48,6 @@ const dateTimeOffset = (days: number, hour: number) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 };
 
-const initialAlerts: WeatherAlert[] = [
-  {
-    id: 'WA-2026-003',
-    title: 'Heavy rain preparedness reminder',
-    type: 'Heavy rain',
-    locations: 'Sample Barangay A, Sample Barangay B',
-    severity: 'Moderate',
-    issuedAt: dateTimeOffset(-1, 9),
-    expiresAt: dateTimeOffset(2, 18),
-    source: 'Sample admin note — no official warning feed connected',
-    sourceKind: 'Staff-entered note',
-    status: 'Active',
-    action: 'Sample guidance: check drainage and secure farm tools. Confirm conditions with the appropriate local or official source.',
-  },
-  {
-    id: 'WA-2026-002',
-    title: 'Water conservation notice',
-    type: 'Drought',
-    locations: 'Sample Barangay C',
-    severity: 'Low',
-    issuedAt: dateTimeOffset(-4, 8),
-    expiresAt: dateTimeOffset(-1, 18),
-    source: 'Sample admin note — no official warning feed connected',
-    sourceKind: 'Staff-entered note',
-    status: 'Active',
-    action: 'Sample notice: review water use and report irrigation concerns to the local agriculture office.',
-  },
-  {
-    id: 'WA-2026-001',
-    title: 'Flood readiness information',
-    type: 'Flooding',
-    locations: 'Sample Barangay A',
-    severity: 'High',
-    issuedAt: dateTimeOffset(-8, 14),
-    expiresAt: dateTimeOffset(1, 12),
-    source: 'Sample admin note — no official warning feed connected',
-    sourceKind: 'Staff-entered note',
-    status: 'Acknowledged',
-    action: 'Sample guidance: follow local emergency instructions and avoid flooded roads or fields.',
-  },
-];
-
 const alertTypes: AlertKind[] = ['Heavy rain', 'Flooding', 'Drought', 'Crop-risk advisory', 'Other'];
 const severities: AlertSeverity[] = ['High', 'Moderate', 'Low'];
 const statuses: AlertStatus[] = ['Draft', 'Active', 'Expired', 'Acknowledged'];
@@ -535,7 +493,7 @@ function AlertForm({ alert, onClose, onSave }: AlertFormProps) {
       >
         <header className="weather-modal-header">
           <div>
-            <p className="weather-eyebrow">STAFF-ENTERED SAMPLE NOTICE</p>
+            <p className="weather-eyebrow">STAFF-ENTERED NOTICE</p>
             <h2 id="weather-form-title">{alert ? 'Edit draft notice' : 'Create draft notice'}</h2>
           </div>
           <button aria-label="Close form" className="weather-icon-button" onClick={onClose} type="button"><X size={19} /></button>
@@ -619,7 +577,8 @@ function PublishConfirmation({ alert, onCancel, onConfirm }: { alert: WeatherAle
 }
 
 const WeatherAlerts = () => {
-  const [alerts, setAlerts] = useState(initialAlerts);
+  // Start with an empty array instead of the hardcoded samples
+  const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState(allFilter);
   const [typeFilter, setTypeFilter] = useState(allFilter);
@@ -687,21 +646,21 @@ const WeatherAlerts = () => {
 
       <div className="weather-demo-notice">
         <ShieldAlert size={17} />
-        <p><strong>Forecast guidance is not an official warning.</strong> Use the location lookup below for model-based outlooks; existing notices are fictional staff-entered samples.</p>
+        <p><strong>Forecast guidance is not an official warning.</strong> Use the location lookup below for model-based outlooks; existing notices are staff-entered notes.</p>
       </div>
 
       <WeatherLookup />
 
       <section aria-label="Weather notice summary" className="weather-summary">
-        <article><span className="weather-summary-icon weather-summary-icon--active"><CloudRain size={18} /></span><div><span>Active</span><strong>{activeCount}</strong><small>sample notices</small></div></article>
+        <article><span className="weather-summary-icon weather-summary-icon--active"><CloudRain size={18} /></span><div><span>Active</span><strong>{activeCount}</strong><small>current notices</small></div></article>
         <article><span className="weather-summary-icon weather-summary-icon--draft"><ClipboardList size={18} /></span><div><span>Drafts</span><strong>{draftCount}</strong><small>not published</small></div></article>
         <article><span className="weather-summary-icon weather-summary-icon--expired"><Clock3 size={18} /></span><div><span>Expired</span><strong>{expiredCount}</strong><small>past expiry time</small></div></article>
-        <article><span className="weather-summary-icon weather-summary-icon--all"><Bell size={18} /></span><div><span>Total notices</span><strong>{alerts.length}</strong><small>sample records</small></div></article>
+        <article><span className="weather-summary-icon weather-summary-icon--all"><Bell size={18} /></span><div><span>Total notices</span><strong>{alerts.length}</strong><small>all records</small></div></article>
       </section>
 
       <section aria-label="Weather notices" className="weather-notices-card">
         <header className="weather-notices-header">
-          <div><h2>Alert &amp; notice list</h2><p>{filteredAlerts.length} of {alerts.length} sample notices</p></div>
+          <div><h2>Alert &amp; notice list</h2><p>{filteredAlerts.length} of {alerts.length} notices</p></div>
           <span className="weather-list-label"><AlertTriangle size={14} /> Staff review</span>
         </header>
         <div className="weather-filters">
@@ -761,11 +720,11 @@ const WeatherAlerts = () => {
               </article>
             );
           })}
-          {filteredAlerts.length === 0 && <p className="weather-empty">No notices match these search and filters.</p>}
+          {filteredAlerts.length === 0 && <p className="weather-empty">No notices found.</p>}
         </div>
       </section>
 
-      <p className="weather-footnote">Sample notices do not represent current or official weather conditions. Verify data sources and wording before sharing time-sensitive guidance.</p>
+      <p className="weather-footnote">Notices do not represent current or official weather conditions. Verify data sources and wording before sharing time-sensitive guidance.</p>
 
       {formAlert !== undefined && <AlertForm alert={formAlert} onClose={() => setFormAlert(undefined)} onSave={saveAlert} />}
       {publishAlertId && (
